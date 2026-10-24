@@ -1,0 +1,4 @@
+Container: protected bootstrap, workflow, PostgreSQL, exports and secure-cookie flags verified.
+Restart: records, bearer session and unconfirmed import preview preserved.
+Restore: pg_dump/pg_restore into a new database; eight complete tables match; restored application authenticates and returns identical statistics, two cases and one import batch.
+Archive SHA256: b62c837cb4547d234e2cfdc3775d9f8b6a4da869ff9695778be5e1c7d8d29b3e

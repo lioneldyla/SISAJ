@@ -1,0 +1,16 @@
+.git
+.venv
+__pycache__
+.pytest_cache
+*.pyc
+.env
+.env.*
+*.db
+*.db-wal
+*.db-shm
+backups
+attachments
+*.xlsx
+*.docx
+*.zip
+docs/evidence

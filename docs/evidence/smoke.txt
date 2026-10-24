@@ -1,0 +1,2 @@
+SISAJ health verified; /cases 401 verified
+cloud_aggregates health verified; /aggregates/public 503 verified

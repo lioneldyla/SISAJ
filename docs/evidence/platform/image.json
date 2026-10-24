@@ -1,0 +1,11 @@
+{
+  "image": "sha256:e5d8614bab1ca30b042053329d84a02a5f8f4f72207f30437f85f2fc10ea637b",
+  "verified_source_checksums": {
+    "app/main.py": "0ebe0c1ad185275b2be77d8e8c3653e33dea52f9fc514866e7522502f2e987e0",
+    "app/storage.py": "51f9de6b80a7c72d45a066905458fbaea81f19f91d1b3505659effe71cea242d",
+    "app/static/app.js": "24dcea0c211131b768443738efb56fd51afe4059a15ea456422d34ceab717af8",
+    "app/static/index.html": "d47f094de287a84529b1187f874450ffaf6a35d49cd14d79e419384516833338",
+    "app/static/style.css": "fc3de26ed444a0e72b983772b590d4a4c769d9378851c6723caae8d5b662fc4a"
+  },
+  "build_mode": "offline verified wheels; production Dockerfile"
+}

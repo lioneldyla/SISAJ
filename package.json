@@ -1,0 +1,8 @@
+{
+  "name": "sisa-platform",
+  "version": "0.3.0",
+  "private": true,
+  "description": "Browser verification only; the production UI has no JavaScript build dependency.",
+  "scripts": {"test:e2e": "node scripts/browser_smoke.cjs"},
+  "devDependencies": {"playwright": "1.62.1"}
+}

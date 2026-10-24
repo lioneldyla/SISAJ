@@ -1,0 +1,13 @@
+services:
+  sisa:
+    build: .
+    ports:
+      - "127.0.0.1:8000:8000"
+    environment:
+      PORT: "8000"
+      SISA_DB_PATH: /app/data/sisa.db
+      SISA_BACKUP_DIR: /app/backups
+    volumes:
+      - ./data:/app/data
+      - ./backups:/app/backups
+    restart: unless-stopped

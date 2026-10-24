@@ -1,0 +1,3 @@
+rp_number,rp_year,date_rp,provenance,transnational,category,ri_number,person_physical_count,person_legal_count
+RP-DEMO-001,2026,2026-01-15,OPJ fictif,Non,corruption fictive,RI-DEMO-001,2,0
+RP-DEMO-002,2026,2026-02-10,Service fictif,Oui,blanchiment fictif,RI-DEMO-002,1,1

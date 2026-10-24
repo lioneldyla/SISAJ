@@ -1,0 +1,5 @@
+
+> sisa-platform@0.3.0 test:e2e
+> node scripts/browser_smoke.cjs
+
+Browser workflow passed: bootstrap, login, creation, submission, validation, users, import confirmation, statistics, PDF/XLSX downloads, responsive navigation, logout; 0 JavaScript errors.
