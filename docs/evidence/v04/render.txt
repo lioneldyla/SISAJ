@@ -1,0 +1,19 @@
+25 octobre 2026 — contrôles HTTPS de la démonstration Render
+URL : https://sisa-platform-demo.onrender.com/
+Commit déployé et confirmé Live : 166ff4620ae0129ad3a06dfdf71defc72af85a90
+Service : srv-dbepckrrjlhs738eo2mg
+Base : dpg-dbepc7brjlhs738emol0-a — PostgreSQL 18, Frankfurt
+
+/health : 200, status=ok, version=0.4.0, mode=render-synthetic
+/ready : 200, status=ready, storage=postgresql, data_mode=synthetic
+/platform/config : 200, initialized=false, version=0.4.0, bootstrap_key_required=true
+/cases sans authentification : 401
+/ : 200, écran « Initialiser votre plateforme », prototype v0.4
+En-têtes : X-Frame-Options=DENY, X-Content-Type-Options=nosniff, Strict-Transport-Security=max-age=31536000
+
+Le premier déploiement v0.3 avait échoué sur ConnectionTimeout. La connexion interne visait la bonne base ; la relance après disponibilité de PostgreSQL a réussi sans changement d’identifiants ni ouverture réseau.
+La v0.4 a ensuite été intégrée après CI réussie sur PostgreSQL 16 et 18, puis déployée.
+
+Recovery : export demandé, une ligne datée du 25 octobre 2026 à 05:50 UTC ; aucun fichier téléchargeable confirmé pendant le contrôle. Restauration de la base Render non vérifiée. Le PITR est encore indisponible pendant l’initialisation de la base récente.
+Premier compte administrateur à créer par le propriétaire. Parcours authentifiés sur le domaine Render à réaliser après initialisation ; ces parcours ont déjà réussi localement et en CI.
+Aucune donnée judiciaire réelle utilisée, aucun accès externe PostgreSQL ajouté, aucun plan ni moyen de paiement modifié par cette intervention.

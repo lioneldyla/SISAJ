@@ -14,7 +14,7 @@ Voir [le modèle et les indicateurs](docs/v04_modele_indicateurs.md), [la migrat
 python scripts/verify_restore.py
 ```
 
-Ce contrôle crée et restaure seulement des données synthétiques temporaires. PostgreSQL, restauration PostgreSQL et tests navigateur sont aussi préparés dans le workflow GitHub Actions.
+Ce contrôle crée et restaure seulement des données synthétiques temporaires. PostgreSQL 16/18, restauration PostgreSQL et tests navigateur ont aussi réussi dans GitHub Actions.
 
 ## Modules livrés
 
@@ -34,7 +34,7 @@ La passerelle historique `cloud_aggregates/` est conservée séparément. Elle n
 
 Suivre [le guide Render](deploy/RENDER.md). Le fichier [render.yaml](render.yaml) déclare un service web et une base PostgreSQL privée, dans la même région. `/ready` vérifie la base. Aucun stockage de dossiers ne repose sur le disque éphémère du service web. Il n’y a pas de mot de passe administrateur par défaut.
 
-**Livraison préparée et testée localement ; aucun déploiement sur un compte Render n’est revendiqué.** Les ressources sont payantes selon les plans choisis ; contrôler tarifs, région et disponibilité dans Render avant création.
+**Démonstration v0.4 déployée et disponibilité PostgreSQL/HTTPS vérifiée : https://sisa-platform-demo.onrender.com/ . Le premier administrateur reste à initialiser ; la recette authentifiée et la restauration de la base Render restent à achever.** Les ressources sont payantes selon les plans choisis ; contrôler tarifs, région et disponibilité dans Render avant création.
 
 ## Développement local synthétique
 

@@ -6,7 +6,7 @@
 - Modèle juridique additif et formulaires : juridictions, personnes, infractions, décisions/résultats et mesures avec devise.
 - Indicateurs provisoires à dates distinctes, décisions mixtes, inconnus et sommes exactes par devise ; rapports PDF/XLSX.
 - Exercice de restauration SQLite complète, contrôles PostgreSQL/restauration préparés en CI.
-- Accès Render vérifié ; création bloquée par « Payment Information Required ». Aucun déploiement distant effectué.
+- Déploiement v0.4 sur Render confirmé Live après résolution du premier démarrage PostgreSQL ; HTTPS et disponibilité vérifiés. Compte administrateur à initialiser ; restauration Render non encore vérifiée.
 
 
 ## 24 octobre 2026 — audit du socle v0.2 hybride

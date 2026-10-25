@@ -1,0 +1,4 @@
+2026-10-25T05:49:15.3619801Z 35 passed, 1 deselected, 1 warning in 16.15s
+2026-10-25T05:49:17.9362327Z PostgreSQL: pg_dump restored into a NEW isolated database; all 17 tables match.
+2026-10-25T05:49:17.9363548Z Restored application: authentication, legal relations, indicators, pending import and record count verified.
+2026-10-25T05:49:17.9364651Z Archive SHA256: 85efb907f9dee783b4ea5b1401e9d82a9eb82c8a4215fb52b16d891561d76fd6
