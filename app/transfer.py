@@ -4,6 +4,7 @@ import hashlib
 import io
 import json
 import uuid
+import time
 from pathlib import PurePath
 from fastapi import Depends, File, Form, HTTPException, UploadFile
 from fastapi.responses import StreamingResponse
@@ -48,13 +49,45 @@ def install(app, db, audit, utcnow, user_from_token, require_roles):
     def batches(u=Depends(require_roles('admin','supervisor'))):
         with db() as c:
             rows=c.execute('SELECT b.id,b.filename,b.created_at,b.sha256,a.reversed_at,a.restored_at FROM registry_batches b LEFT JOIN transfer_archives a ON a.batch_id=b.id ORDER BY b.created_at DESC LIMIT 100').fetchall()
-            return {'items':[dict(r) for r in rows]}
+            items=[]
+            for row in rows:
+                item=dict(row)
+                meta=c.execute('SELECT i.row_count,i.imported_count,u.username FROM import_batches i JOIN users u ON u.id=i.imported_by WHERE i.id=?',(item['id'],)).fetchone()
+                if meta:item.update(dict(meta))
+                records=c.execute('SELECT r.payload FROM registry_records r JOIN cases c ON c.id=r.case_id WHERE c.source_batch=?',(item['id'],)).fetchall()
+                item['people_created']=sum(len(json.loads(r['payload'])['people']) for r in records)
+                item['decisions_created']=sum(len(json.loads(r['payload'])['decisions']) for r in records)
+                item['rejected_rows']=0;item['duplicate_rows_grouped']=max(0,item.get('row_count',0)-item.get('imported_count',0))
+                items.append(item)
+            return {'items':items}
+
+    @app.get('/registry/imports/previews/{pid}/report')
+    def preview_report(pid:str,u=Depends(require_roles('admin','supervisor','collector'))):
+        with db() as c:
+            row=c.execute('SELECT * FROM registry_previews WHERE id=?',(pid,)).fetchone()
+            if not row or row['created_at']<int(time.time())-1800:raise HTTPException(404,'Contrôle absent ou expiré')
+            if row['user_id']!=u['id']:raise HTTPException(403,'Contrôle créé par un autre utilisateur')
+            r=json.loads(row['payload'])['result']
+            report={k:r[k] for k in ('source_sheet','total_rows','dossier_count','coverage','errors','warnings','file_sha256')}
+        return StreamingResponse(io.BytesIO(json.dumps(report,ensure_ascii=False).encode()),media_type='application/json',headers={'Content-Disposition':'attachment; filename="rapport_controle_import.json"'})
 
     @app.get('/registry/batches/{bid}/reversal-preview')
     def reversal_preview(bid:str,u=Depends(require_roles('admin','supervisor'))):
         with db() as c:
             data,blocked,digest=snapshot(c,bid)
-        return {'batch_id':bid,'dossiers':len(data['cases']),'blocked':blocked,'can_reverse':bool(data['cases']) and not blocked,'fingerprint':digest}
+        return {'batch_id':bid,'dossiers':len(data['cases']),'people':sum(len(json.loads(r['payload'])['people']) for r in data['records']),'decisions':sum(len(json.loads(r['payload'])['decisions']) for r in data['records']),'items':[{'id':x['id'],'rp_number':x['rp_number'],'status':x['status'],'version':x['version']} for x in data['cases']],'blocked':blocked,'can_reverse':bool(data['cases']) and not blocked,'fingerprint':digest}
+
+    @app.get('/registry/batches/{bid}/report')
+    def batch_report(bid:str,u=Depends(require_roles('admin','supervisor'))):
+        with db(write=True) as c:
+            b=c.execute('SELECT id,filename,created_at,sha256,manifest FROM registry_batches WHERE id=?',(bid,)).fetchone()
+            if not b:raise HTTPException(404,'Lot introuvable')
+            info=dict(b);info['manifest']=json.loads(info['manifest'])
+            info['cases']=[dict(r) for r in c.execute('SELECT id,rp_number,status,version FROM cases WHERE source_batch=? ORDER BY id',(bid,)).fetchall()]
+            info['corrections']=[dict(r) for r in c.execute("SELECT a.created_at,a.action,a.entity_id,a.detail_json FROM audit_log a JOIN cases c ON a.entity_id=CAST(c.id AS TEXT) WHERE c.source_batch=? AND a.entity_type IN ('case','register') ORDER BY a.created_at",(bid,)).fetchall()]
+            info['errors']=[];info['note']='Lot confirmé sans erreur bloquante ; avertissements source et historique conservés. Les contrôles avant confirmation restent affichés dans la prévisualisation.'
+            audit(c,u['id'],'export','batch_report',bid,{})
+        return StreamingResponse(io.BytesIO(json.dumps(info,ensure_ascii=False).encode()),media_type='application/json',headers={'Content-Disposition':'attachment; filename="rapport_lot.json"'})
 
     @app.post('/registry/batches/{bid}/reverse')
     def reverse(bid:str,x:Reverse,u=Depends(require_roles('admin'))):

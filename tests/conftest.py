@@ -34,6 +34,9 @@ def reset_test_database():
         c.executescript(REGISTRY_SCHEMA)
         from app.transfer import SCHEMA as TRANSFER_SCHEMA
         c.executescript(TRANSFER_SCHEMA)
+        from app.access import SCHEMA as ACCESS_SCHEMA
+        c.executescript(ACCESS_SCHEMA)
+        c.execute('DELETE FROM user_data_profiles')
         c.execute('DELETE FROM transfer_archives')
         c.execute('DELETE FROM reference_documents')
         c.execute('DELETE FROM jurisdictions')
