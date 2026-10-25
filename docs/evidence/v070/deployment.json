@@ -1,0 +1,36 @@
+{
+  "date_utc": "2026-10-25",
+  "url": "https://sisa-platform-demo.onrender.com/",
+  "version": "0.7.0",
+  "commit": "9ddebee8c8e116217633331c22acc0e0c4bddcb1",
+  "render_deploy": "dep-dbf6bmd9fdbs738vuobg",
+  "render_status": "Deploy succeeded|Live",
+  "health": "ok / 0.7.0",
+  "ready": "ready / postgresql",
+  "backup_database": "sisa_pre_transfer_20261025_201441",
+  "backup_source_read_only": true,
+  "backup_tables_compared_after_restore": 24,
+  "backup_sequences_verified": true,
+  "backup_committed_restore_verified": true,
+  "backup_archive_sha256": "930f651bf1db86b6ec7894092645a140cf3aaff51d8ffa8ee5d2d1fae50a1aee",
+  "post_deploy_read_only_counts": {
+    "public_tables": 26,
+    "cases": 1500,
+    "registry_records": 1500,
+    "reference_documents": 48,
+    "business_reviews": 0,
+    "analysis_snapshots": 0
+  },
+  "automated_tests": 97,
+  "ci": "https://github.com/lioneldyla/SISAJ/actions/runs/40230503207",
+  "ci_result": "success / SQLite, PostgreSQL 16, PostgreSQL 18, browser and populated restore",
+  "live_ui_checks": [
+    "All cabinets: 1500 cases",
+    "Compliance: 11 scenarios; no human reviews fabricated",
+    "Review form opens with accessible controls; no submission performed",
+    "Quality: ORIENTATION_DATE affects 1500 cases; no source date invented"
+  ],
+  "dataset_kind": "synthetic",
+  "institutional_approval": false,
+  "original_tdr_charter_review": "pending: original named document not located in accessible sources"
+}
