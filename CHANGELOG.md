@@ -1,5 +1,14 @@
 # Historique
 
+## 25 octobre 2026 — v0.5.0 (reprise PPEF)
+
+- Registre complet, règles conditionnelles et valeurs inconnues explicites ; compléments typés additifs sans réécriture au démarrage.
+- Import contrôlé AUDIENCES PENALES/Feuil1, conventions de date explicites, couverture des colonnes, original et provenance conservés.
+- Six états de pilotage, rapports complets et prévision de flux conditionnée à un historique suffisant.
+- Saisie guidée en six sections, mobile, palette forêt/ivoire et planche visuelle.
+- Déploiement différé : restauration de la sauvegarde Render à vérifier avant modification de la base initialisée.
+
+
 ## 25 octobre 2026 — v0.4.0 (démonstration)
 
 - Verrou commun pour mutations/événements/validation, versions incrémentées et contrôlées dans l’interface ; tests concurrents.

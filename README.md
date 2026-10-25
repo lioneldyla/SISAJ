@@ -1,8 +1,16 @@
-# SISAJ v0.4 — contenu juridique, indicateurs et démonstration
+# SISAJ v0.5 — registre PPEF complet et pilotage
 
 Système de gestion et d’analyse PPEF : interface française responsive, API FastAPI et stockage PostgreSQL sur Render. Évolution du socle v0.2 hybride fourni, conservant les parcours métier existants et le mode local SQLite.
 
 **Version de démonstration, données synthétiques uniquement. Aucun hébergement de données judiciaires réelles n’est autorisé par cette livraison.** Les indicateurs restent provisoires. Les modules officiels complets, la recette institutionnelle et la revue indépendante restent à réaliser.
+
+## Évolution v0.5 du 25 octobre 2026
+
+Reprise des 31 variables et des colonnes complémentaires du classeur PPEF : saisie en six sections, procédures/audiences, personnes détaillées, décisions/peines et biens/valeurs. Import multi-feuilles contrôlé, couverture de colonnes, original complet et lignes sources conservés, blocage des ambiguïtés et des pertes silencieuses. Six états de pilotage, rapports PDF/Excel, réversibilité et prévisions de flux uniquement lorsque l’historique le permet.
+
+[Bilan et limites v0.5](docs/validation_v05.md) · [Correspondances du classeur](docs/ppef_column_mapping.json) · [Planche visuelle](docs/planche_visuelle.html).
+
+**La v0.5 est une livraison de code à tester/intégrer ; la démonstration Render reste en v0.4 jusqu’à restauration vérifiée de sa sauvegarde.** Aucun import du fichier joint sur le site ni modification de sa base effectués dans cette itération.
 
 ## Évolution v0.4 du 25 octobre 2026
 

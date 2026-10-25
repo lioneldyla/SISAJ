@@ -1,3 +1,9 @@
+# Évolution v0.5 — reprise PPEF
+
+Les 31 variables, les colonnes complémentaires, l’import complet avec source originale, les six états et le parcours guidé sont implémentés. Voir [le bilan v0.5](validation_v05.md). Reste la restauration de contrôle de la base Render, puis la mise en ligne après vérification ; aucune nouvelle dépense engagée. La validation institutionnelle des nomenclatures et règles demeure distincte des tests.
+
+---
+
 # Évolution v0.4 — 25 octobre 2026
 
 Les quatre lots ont une implémentation locale : concurrence, modèle juridique, indicateurs/rapports et exercice de restauration. La v0.4 est en ligne sur Render et les tests PostgreSQL 16/18 sont réussis. Le premier administrateur, la recette authentifiée sur le domaine cible, la restauration de la base Render et l’approbation des règles officielles restent à achever. Voir [le bilan courant](validation_v04.md), [le modèle](v04_modele_indicateurs.md) et [la reprise](v04_migration_reprise.md).

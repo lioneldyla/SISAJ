@@ -29,8 +29,15 @@ with TestClient(app) as client:
     headers={'Authorization':'Bearer '+client.post('/auth/login',json={'username':'restore_admin','password':password}).json()['access_token']}
     case=client.post('/cases',headers=headers,json={'rp_number':'SYNTH-RESTORE','rp_year':2026,'date_rp':'2026-01-01','provenance':'Fictif','category':'Fictif','transnational':False}).json()['id']
     assert client.put(f'/cases/{case}/legal',headers=headers,json={'expected_version':1,'reason':'Exercice de restauration','people':[{'reference':'P1','kind':'physical','role':'defendant','display_name':'Fictif'}],'offences':[{'reference':'I1','code':'TEST','label':'Fictif'}],'decisions':[{'reference':'D1','decision_date':'2026-02-01','on_merits':True,'outcomes':[{'person_reference':'P1','offence_reference':'I1','result':'conviction'}]}],'measures':[{'reference':'M1','kind':'fine','measure_date':'2026-02-01','amount':'12.50','currency':'XOF'}]}).status_code==200
-    assert client.post(f'/cases/{case}/submit?expected_version=2',headers=headers).status_code==200
-    assert client.post(f'/cases/{case}/validate?expected_version=3',headers=headers).status_code==200
+    full=client.get(f'/cases/{case}/register',headers=headers).json()['record']
+    full['procedure']['cabinet']='Cabinet synthétique restauré';full['procedure']['cabinet_state']='known'
+    full['people'][0]['profession']='other';full['people'][0]['profession_other']='Profession synthétique restaurée'
+    assert client.put(f'/cases/{case}/register',headers=headers,json={'expected_version':2,'reason':'Contrôle du registre complet','record':full}).status_code==200
+    source_csv=b'rp_number,rp_year,date_rp,provenance,category,transnational\nSYNTH-SOURCE-ARCHIVE,2026,2026-04-01,Fictif,Fictif,Non\n'
+    source_preview=client.post('/registry/imports/preview',headers=headers,files={'file':('synthetic.csv',source_csv)}).json()['preview_id']
+    source_batch=client.post('/registry/imports/'+source_preview+'/confirm',headers=headers).json()['batch_id']
+    assert client.post(f'/cases/{case}/submit?expected_version=3',headers=headers).status_code==200
+    assert client.post(f'/cases/{case}/validate?expected_version=4',headers=headers).status_code==200
     before=client.get('/stats/legal',headers=headers).json()
     preview=client.post('/imports/preview',headers=headers,files={'file':('synthetic.csv',b'rp_number,rp_year,date_rp,provenance,category,transnational\nSYNTH-RESTORE-IMPORT,2026,2026-03-01,Fictif,Fictif,Non\n','text/csv')}).json()['preview_id']
 pg_env={**os.environ,'PGPASSWORD':parts.password or ''}
@@ -67,9 +74,11 @@ with TestClient(app) as c:
  assert c.get('/stats/legal',headers=h).json()==json.loads(os.environ['SISA_RESTORE_TEST_STATS'])
  assert c.get('/cases/1/legal',headers=h).json()['measures'][0]['amount']=='12.50'
  assert c.post('/imports/'+os.environ['SISA_RESTORE_TEST_PREVIEW']+'/confirm',headers=h).json()['imported_rows']==1
- assert c.get('/cases',headers=h).json()['total']==2
+ assert c.get('/cases',headers=h).json()['total']==3
+ assert c.get('/cases/1/register',headers=h).json()['record']['procedure']['cabinet']=='Cabinet synthétique restauré'
+ assert c.get('/registry/imports/'+os.environ['SISA_RESTORE_SOURCE_BATCH']+'/source',headers=h).content.startswith(b'rp_number')
 '''
-    result=subprocess.run([sys.executable,'-c',check],cwd=root,env={**os.environ,'DATABASE_URL':target,'SISA_RESTORE_TEST_HEADER':json.dumps(headers),'SISA_RESTORE_TEST_STATS':json.dumps(before),'SISA_RESTORE_TEST_PREVIEW':preview},capture_output=True)
+    result=subprocess.run([sys.executable,'-c',check],cwd=root,env={**os.environ,'DATABASE_URL':target,'SISA_RESTORE_TEST_HEADER':json.dumps(headers),'SISA_RESTORE_TEST_STATS':json.dumps(before),'SISA_RESTORE_TEST_PREVIEW':preview,'SISA_RESTORE_SOURCE_BATCH':source_batch},capture_output=True)
     if result.returncode:raise RuntimeError('Restored application verification failed; connection details suppressed.')
     print(f'PostgreSQL: pg_dump restored into a NEW isolated database; all {len(tables)} tables match.')
     print('Restored application: authentication, legal relations, indicators, pending import and record count verified.')

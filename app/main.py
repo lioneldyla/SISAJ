@@ -1,4 +1,4 @@
-"""SISAJ v0.4 — local-first demonstration for synthetic/pilot data only.
+"""SISAJ v0.5 — local-first demonstration for synthetic/pilot data only.
 No cloud sync, no external AI, no production security certification.
 """
 from __future__ import annotations
@@ -29,7 +29,7 @@ if CLOUD and os.getenv('SISA_DATA_MODE', 'synthetic') != 'synthetic':
     raise RuntimeError('Cette version cloud est réservée aux données synthétiques.')
 SECURE_COOKIE = os.getenv('SISA_SECURE_COOKIE', '1' if CLOUD else '0') == '1'
 SESSION_TTL = 8 * 60 * 60
-app = FastAPI(title='SISA — Système intelligent de suivi et d’analyse judiciaire', version='0.4.0', description='MVP local-first. Données synthétiques uniquement jusqu’à validation institutionnelle.')
+app = FastAPI(title='SISA — Système intelligent de suivi et d’analyse judiciaire', version='0.5.0', description='MVP local-first. Données synthétiques uniquement jusqu’à validation institutionnelle.')
 
 SCHEMA = '''
 PRAGMA foreign_keys=ON;
@@ -108,14 +108,14 @@ class BootstrapIn(BaseModel): username: str=Field(min_length=3,max_length=80); p
 class LoginIn(BaseModel): username: str=Field(min_length=1,max_length=80); password: str=Field(min_length=1,max_length=200)
 class CaseIn(BaseModel):
     model_config = ConfigDict(str_strip_whitespace=True, extra='forbid')
-    rp_number: str=Field(min_length=1,max_length=100); rp_year: int=Field(ge=1900,le=2200); date_rp: date; provenance: str=Field(min_length=1,max_length=250); transnational: bool; category: str=Field(min_length=1,max_length=250); ri_number: Optional[str]=None; person_physical_count: Optional[int]=Field(default=None,ge=0,le=2147483647); person_legal_count: Optional[int]=Field(default=None,ge=0,le=2147483647)
+    rp_number: str=Field(min_length=1,max_length=100); rp_year: int=Field(ge=1900,le=2200); date_rp: date; provenance: str=Field(min_length=1,max_length=250); transnational: bool | None; category: str=Field(min_length=1,max_length=250); ri_number: Optional[str]=None; person_physical_count: Optional[int]=Field(default=None,ge=0,le=2147483647); person_legal_count: Optional[int]=Field(default=None,ge=0,le=2147483647)
 class ReturnIn(BaseModel):
     model_config = ConfigDict(str_strip_whitespace=True)
     reason: str=Field(min_length=5,max_length=1000)
 class UserIn(BaseModel): username: str=Field(min_length=3,max_length=80); password: str=Field(min_length=14,max_length=200); role: str
 
 @app.get('/health')
-def health(): return {'status':'ok','app':'SISA','version':'0.4.0','mode':'render-synthetic' if CLOUD else 'local-first','cloud_sync':'disabled','external_ai':'disabled'}
+def health(): return {'status':'ok','app':'SISA','version':'0.5.0','mode':'render-synthetic' if CLOUD else 'local-first','cloud_sync':'disabled','external_ai':'disabled'}
 @app.post('/auth/bootstrap')
 def bootstrap(x: BootstrapIn, x_sisa_bootstrap_key: Optional[str]=Header(default=None)):
     key = os.getenv('SISA_BOOTSTRAP_KEY', '')
@@ -171,13 +171,19 @@ def list_users(u=Depends(require_roles('admin','supervisor'))):
 
 def normalize_case(x: CaseIn):
     if x.date_rp.year!=x.rp_year: raise HTTPException(422,'L’année de la date RP doit correspondre à rp_year.')
-    return (x.rp_number.strip(),x.rp_year,x.date_rp.isoformat(),x.ri_number,x.provenance.strip(),int(x.transnational),x.category.strip(),x.person_physical_count,x.person_legal_count)
+    return (x.rp_number.strip(),x.rp_year,x.date_rp.isoformat(),x.ri_number,x.provenance.strip(),int(bool(x.transnational)),x.category.strip(),x.person_physical_count,x.person_legal_count)
 @app.post('/cases')
 def create_case(x: CaseIn,u=Depends(require_roles('admin','collector','supervisor'))):
     values=normalize_case(x); now=utcnow()
     try:
         with db(write=True) as c:
-            cur=c.execute('''INSERT INTO cases(rp_number,rp_year,date_rp,ri_number,provenance,transnational,category,person_physical_count,person_legal_count,created_by,updated_by,created_at,updated_at) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?)''',(*values,u['id'],u['id'],now,now)); cid=cur.lastrowid; audit(c,u['id'],'create','case',cid,{'rp_number':x.rp_number,'rp_year':x.rp_year})
+            if DATABASE_URL:c.execute('SELECT pg_advisory_xact_lock(731026)')
+            if c.execute('SELECT id FROM cases WHERE LOWER(rp_number)=? AND rp_year=?',(x.rp_number.lower(),x.rp_year)).fetchone():raise HTTPException(409,'Dossier déjà présent pour ce RP et cette année.')
+            cur=c.execute('''INSERT INTO cases(rp_number,rp_year,date_rp,ri_number,provenance,transnational,category,person_physical_count,person_legal_count,created_by,updated_by,created_at,updated_at) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?)''',(*values,u['id'],u['id'],now,now)); cid=cur.lastrowid
+            if x.transnational is None:
+                from .registry_models import Register
+                c.execute('INSERT INTO registry_records VALUES (?,?,?)',(cid,Register(transnational_state='undetermined',ri_state='assigned' if x.ri_number else 'not_recorded').model_dump_json(),now))
+            audit(c,u['id'],'create','case',cid,{'rp_number':x.rp_number,'rp_year':x.rp_year})
     except (sqlite3.IntegrityError, psycopg.IntegrityError) as e: raise HTTPException(409,'Dossier déjà existant pour ce numéro RP et cette année.') from e
     return {'id':cid,'status':'draft','version':1}
 @app.get('/cases')
@@ -202,7 +208,11 @@ def get_case(case_id:int,u=Depends(user_from_token)):
         row=c.execute('SELECT * FROM cases WHERE id=?',(case_id,)).fetchone()
         if not row: raise HTTPException(404,'Dossier introuvable.')
         events=c.execute('SELECT * FROM case_events WHERE case_id=? ORDER BY event_date,id',(case_id,)).fetchall()
-    d=dict(row); d.pop('created_by',None); d.pop('updated_by',None); d['events']=[dict(e) for e in events]; return d
+        reg=c.execute('SELECT payload FROM registry_records WHERE case_id=?',(case_id,)).fetchone()
+    d=dict(row)
+    if reg:
+        state=json.loads(reg['payload'])['transnational_state'];d['transnational_state']=state;d['transnational']=True if state=='yes' else False if state=='no' else None;d['register_complete']=True
+    d.pop('created_by',None); d.pop('updated_by',None); d['events']=[dict(e) for e in events]; return d
 @app.patch('/cases/{case_id}')
 def update_case(case_id:int,x:CaseIn,reason:str,expected_version:int|None=None,u=Depends(require_roles('admin','collector','supervisor'))):
     if len(reason.strip())<5: raise HTTPException(422,'Motif de correction obligatoire (5 caractères minimum).')
@@ -211,10 +221,20 @@ def update_case(case_id:int,x:CaseIn,reason:str,expected_version:int|None=None,u
         old=c.execute('SELECT * FROM cases WHERE id=?'+(' FOR UPDATE' if DATABASE_URL else ''),(case_id,)).fetchone()
         if not old: raise HTTPException(404,'Dossier introuvable.')
         if expected_version is not None and old['version'] != expected_version: raise HTTPException(409,'Le dossier a été modifié. Rechargez sa version actuelle.')
+        from .registry_models import Register,validate_dates
+        extra=c.execute('SELECT payload FROM registry_records WHERE case_id=?',(case_id,)).fetchone()
+        if extra:
+            vals=list(vals);vals[6]=int(Register.model_validate_json(extra['payload']).transnational_state=='yes')
+            try: validate_dates(Register.model_validate_json(extra['payload']),x.date_rp)
+            except ValueError as e: raise HTTPException(422,str(e))
         if old['status']=='validated' and u['role']!='supervisor' and u['role']!='admin': raise HTTPException(403,'Seul le superviseur peut corriger un dossier validé.')
         for table,column in (('case_decisions','decision_date'),('case_measures','measure_date')):
             if c.execute('SELECT 1 FROM '+table+' WHERE case_id=? AND '+column+'<?',(case_id,x.date_rp.isoformat())).fetchone():
                 raise HTTPException(422,'La nouvelle date RP serait postérieure à une décision ou mesure existante.')
+        if not extra and x.transnational is None:
+            from .registry import read_record
+            initial=read_record(c,dict(old));initial.transnational_state='undetermined'
+            c.execute('INSERT INTO registry_records VALUES (?,?,?)',(case_id,initial.model_dump_json(),now))
         c.execute('UPDATE cases SET rp_number=?,rp_year=?,date_rp=?,ri_number=?,provenance=?,transnational=?,category=?,person_physical_count=?,person_legal_count=?,status=?,return_reason=NULL,version=version+1,updated_by=?,updated_at=?,validated_by=NULL,validated_at=NULL WHERE id=?',(*vals,'draft',u['id'],now,case_id))
         audit(c,u['id'],'correct','case',case_id,{'reason':reason,'before':dict(old),'after':dict(c.execute('SELECT * FROM cases WHERE id=?',(case_id,)).fetchone())})
     return {'id':case_id,'status':'draft','version':old['version']+1,'message':'Correction historisée; dossier remis en brouillon.'}
@@ -224,6 +244,8 @@ def submit_case(case_id:int,expected_version:int|None=None,u=Depends(require_rol
         row=locked_case(c,case_id,expected_version)
         if not row: raise HTTPException(404,'Dossier introuvable.')
         if row['status'] not in ('draft','returned'): raise HTTPException(409,'Seuls les brouillons ou dossiers retournés peuvent être soumis.')
+        from .registry import ready_for_submission
+        ready_for_submission(c,case_id)
         c.execute("UPDATE cases SET status='submitted',return_reason=NULL,version=version+1,updated_by=?,updated_at=? WHERE id=?",(u['id'],utcnow(),case_id)); audit(c,u['id'],'submit','case',case_id,{})
     return {'id':case_id,'status':'submitted','version':row['version']+1}
 @app.post('/cases/{case_id}/validate')
@@ -232,6 +254,8 @@ def validate_case(case_id:int,expected_version:int|None=None,u=Depends(require_r
         row=locked_case(c,case_id,expected_version)
         if not row: raise HTTPException(404,'Dossier introuvable.')
         if row['status']!='submitted': raise HTTPException(409,'Le dossier doit être soumis avant validation.')
+        from .registry import ready_for_submission
+        ready_for_submission(c,case_id)
         c.execute("UPDATE cases SET status='validated',version=version+1,validated_by=?,validated_at=?,updated_by=?,updated_at=? WHERE id=?",(u['id'],utcnow(),u['id'],utcnow(),case_id)); audit(c,u['id'],'validate','case',case_id,{})
     return {'id':case_id,'status':'validated','version':row['version']+1}
 @app.post('/cases/{case_id}/return')
@@ -349,6 +373,9 @@ def map_import(raw):
     return d
 def validate_import(rows):
     if not rows: raise HTTPException(400,'Aucune ligne exploitable.')
+    allowed=set(CORE_HEADERS.values())|{'rp_number','rp_year','date_rp','provenance','transnational','category','ri_number','person_physical_count','person_legal_count'}
+    if any(str(v).strip() for row in rows for k,v in row.items() if k not in allowed and v is not None):
+        raise HTTPException(422,'Colonnes métier supplémentaires : utiliser la reprise PPEF complète pour éviter toute perte de données.')
     good=[]; errors=[]; seen=set()
     for idx,raw in enumerate(rows, start=1):
         d=map_import(raw); e=[]
@@ -514,7 +541,7 @@ def ready():
 @app.get('/platform/config')
 def platform_config():
     with db() as c: count = c.execute('SELECT COUNT(*) n FROM users').fetchone()['n']
-    return {'initialized':bool(count),'version':'0.4.0','deployment':'Render' if CLOUD else 'Local',
+    return {'initialized':bool(count),'version':'0.5.0','deployment':'Render' if CLOUD else 'Local',
             'data_mode':'synthetic','bootstrap_key_required':bool(os.getenv('SISA_BOOTSTRAP_KEY')) or CLOUD,
             'official_indicators':False,'external_ai':False,'public_publication':False}
 
@@ -591,7 +618,7 @@ def export_xlsx(u=Depends(require_roles('admin','supervisor'))):
     for row in rows: ws.append([safe_spreadsheet_cell(row[k]) for k in fields])
     ws.freeze_panes='A2'; ws.auto_filter.ref=ws.dimensions
     meta=wb.create_sheet('Méthode'); meta.append(['SISA','Export de dossiers — tous statuts'])
-    for pair in [('Auteur',u['username']),('Date UTC',utcnow()),('Version','0.4.0'),('Méthode','Provisoire, non officielle'),('Données','Synthétiques uniquement')]: meta.append(pair)
+    for pair in [('Auteur',u['username']),('Date UTC',utcnow()),('Version','0.5.0'),('Méthode','Provisoire, non officielle'),('Données','Synthétiques uniquement')]: meta.append(pair)
     buf=io.BytesIO(); wb.save(buf); buf.seek(0)
     return StreamingResponse(buf,media_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',headers={'Content-Disposition':'attachment; filename="sisa_dossiers.xlsx"'})
 
@@ -606,7 +633,7 @@ def report_pdf(start:date|None=None,end:date|None=None,jurisdiction:str|None=Non
     y=790
     lines=['SISA / PPEF','Rapport statistique provisoire - donnees synthetiques',
            f"Periode : {start or 'toutes dates'} au {end or 'toutes dates'}",
-           f"Auteur : {u['username']} | UTC : {utcnow()}",'Version : 0.4.0 | Methode : draft-v0.2-not-approved',
+           f"Auteur : {u['username']} | UTC : {utcnow()}",'Version : 0.5.0 | Methode : draft-v0.2-not-approved',
            f"Juridiction : {jurisdiction or 'Toutes'}",'Population : dossiers valides uniquement',f"Dossiers recus : {result['received_cases']}",
            f"Dossiers transnationaux : {result['transnational_cases']}",'Ventilation par categorie :']
     lines += [f"{r['category']} : {r['n']}" for r in result['by_category']]
@@ -623,7 +650,7 @@ def report_pdf(start:date|None=None,end:date|None=None,jurisdiction:str|None=Non
 def operations(u=Depends(require_roles('admin'))):
     return {'database':'PostgreSQL' if DATABASE_URL else 'SQLite','backup_mode':'Sauvegardes gerees Render + export pg_dump' if DATABASE_URL else 'Copie SQLite manuelle',
             'restore_validated':False,'real_data_authorized':False,'external_ai':False,
-            'version':'0.4.0','retention_policy':'A faire approuver','public_publication':False}
+            'version':'0.5.0','retention_policy':'A faire approuver','public_publication':False}
 
 @app.get('/examples/template.csv')
 def template_csv(u=Depends(user_from_token)):
@@ -642,3 +669,6 @@ def correct_case_json(case_id:int, x:CorrectionIn, u=Depends(require_roles('admi
 # Additive legal model and versioned indicator catalogue.
 from .legal import install_legal
 install_legal(app, db, locked_case, audit, utcnow, user_from_token, require_roles, safe_spreadsheet_cell)
+
+from .registry import install as install_registry
+install_registry(app,db,locked_case,audit,utcnow,user_from_token,require_roles,safe_spreadsheet_cell)

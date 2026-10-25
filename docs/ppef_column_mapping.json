@@ -1,0 +1,460 @@
+{
+  "source_file": "BASE DE DONNEES PPEF.xlsx",
+  "sheets": [
+    {
+      "name": "LISTE",
+      "rows": 41,
+      "columns": 5,
+      "role": "reference_or_calculation"
+    },
+    {
+      "name": "AUDIENCES PENALES",
+      "rows": 2393,
+      "columns": 76,
+      "role": "source"
+    },
+    {
+      "name": "Tab indicateur",
+      "rows": 21,
+      "columns": 13,
+      "role": "reference_or_calculation"
+    },
+    {
+      "name": "Feuil2",
+      "rows": 18,
+      "columns": 12,
+      "role": "reference_or_calculation"
+    },
+    {
+      "name": "Tableau de bord",
+      "rows": 25,
+      "columns": 18,
+      "role": "reference_or_calculation"
+    },
+    {
+      "name": "liste2",
+      "rows": 49,
+      "columns": 15,
+      "role": "reference_or_calculation"
+    },
+    {
+      "name": "tab",
+      "rows": 2117,
+      "columns": 31,
+      "role": "reference_or_calculation"
+    },
+    {
+      "name": "graphique",
+      "rows": 24,
+      "columns": 18,
+      "role": "reference_or_calculation"
+    },
+    {
+      "name": "TCD",
+      "rows": 877,
+      "columns": 9,
+      "role": "reference_or_calculation"
+    },
+    {
+      "name": "Feuil1",
+      "rows": 979,
+      "columns": 69,
+      "role": "source"
+    }
+  ],
+  "coverage": [
+    {
+      "column": "N° RP",
+      "destination": "rp_number",
+      "handling": "mapped"
+    },
+    {
+      "column": "Date RP",
+      "destination": "date_rp",
+      "handling": "mapped"
+    },
+    {
+      "column": "Unité (OPJ) de Provenance",
+      "destination": "provenance",
+      "handling": "mapped"
+    },
+    {
+      "column": "Dossier à caractère transnational (oui/non)",
+      "destination": "transnational",
+      "handling": "mapped"
+    },
+    {
+      "column": "Nom du prévenu",
+      "destination": "names",
+      "handling": "mapped"
+    },
+    {
+      "column": "Nombre prévenus (PP)",
+      "destination": "person_physical_count",
+      "handling": "mapped"
+    },
+    {
+      "column": "Type de prévenus",
+      "destination": "party_type",
+      "handling": "mapped"
+    },
+    {
+      "column": "Nombre prévenus (PM)",
+      "destination": "person_legal_count",
+      "handling": "mapped"
+    },
+    {
+      "column": "profession (personne publique )",
+      "destination": "profession",
+      "handling": "mapped"
+    },
+    {
+      "column": "Domaine d' activité (personne morale)",
+      "destination": "activity",
+      "handling": "mapped"
+    },
+    {
+      "column": "Infraction retenue par le Parquet",
+      "destination": "category",
+      "handling": "mapped"
+    },
+    {
+      "column": "montant infraction",
+      "destination": "offence_amount",
+      "handling": "mapped"
+    },
+    {
+      "column": "Suite donnée",
+      "destination": "orientation",
+      "handling": "mapped"
+    },
+    {
+      "column": "Forme juridique",
+      "destination": "legal_form",
+      "handling": "mapped"
+    },
+    {
+      "column": "N° RI",
+      "destination": "ri_number",
+      "handling": "mapped"
+    },
+    {
+      "column": "Cabinet",
+      "destination": "cabinet",
+      "handling": "mapped"
+    },
+    {
+      "column": "Date de clôture ordonnance",
+      "destination": "closure_date",
+      "handling": "mapped"
+    },
+    {
+      "column": "Nature de l'ordonnance de clôture",
+      "destination": "closure_kind",
+      "handling": "mapped"
+    },
+    {
+      "column": "Date de la saisie",
+      "destination": "seizure_date",
+      "handling": "mapped"
+    },
+    {
+      "column": "Objet Saisi",
+      "destination": "seizure_object",
+      "handling": "mapped"
+    },
+    {
+      "column": "Montant saisie",
+      "destination": "seizure_amount",
+      "handling": "mapped"
+    },
+    {
+      "column": "Date de la 1ère audience",
+      "destination": "first_hearing",
+      "handling": "mapped"
+    },
+    {
+      "column": "Infraction retenue par le tribunal",
+      "destination": "tribunal_label",
+      "handling": "mapped"
+    },
+    {
+      "column": "N° de la décision",
+      "destination": "decision_number",
+      "handling": "mapped"
+    },
+    {
+      "column": "Date de la décision",
+      "destination": "decision_date",
+      "handling": "mapped"
+    },
+    {
+      "column": "Caractère décision au fond",
+      "destination": "decision_nature",
+      "handling": "mapped"
+    },
+    {
+      "column": "Contenu de la décision",
+      "destination": "decision_content",
+      "handling": "mapped"
+    },
+    {
+      "column": "Peines prononcées",
+      "destination": "sentence",
+      "handling": "mapped"
+    },
+    {
+      "column": "Amende en fcfa",
+      "destination": "fine",
+      "handling": "mapped"
+    },
+    {
+      "column": "Objet confisqué",
+      "destination": "confiscation_object",
+      "handling": "mapped"
+    },
+    {
+      "column": "Montant confisqué",
+      "destination": "confiscation_amount",
+      "handling": "mapped"
+    },
+    {
+      "column": "Est-ce un cas de traite des personnes (OUI/NON)",
+      "destination": "trafficking",
+      "handling": "mapped"
+    },
+    {
+      "column": "Total condamné",
+      "destination": "convicted_total",
+      "handling": "mapped"
+    },
+    {
+      "column": "Dont condamné masculin",
+      "destination": "convicted_male",
+      "handling": "mapped"
+    },
+    {
+      "column": "Dont condamné féminin",
+      "destination": "convicted_female",
+      "handling": "mapped"
+    },
+    {
+      "column": "Nationalité des condamnés (Préciser nombre condamnés par nationalité)",
+      "destination": "convicted_nationalities",
+      "handling": "mapped"
+    },
+    {
+      "column": "Total victimes",
+      "destination": "victim_total",
+      "handling": "mapped"
+    },
+    {
+      "column": "POSITION",
+      "destination": "position",
+      "handling": "mapped"
+    },
+    {
+      "column": "Observations",
+      "destination": "observations",
+      "handling": "mapped"
+    },
+    {
+      "column": "Harmoisation des infractions",
+      "destination": "harmonised_label",
+      "handling": "mapped"
+    },
+    {
+      "column": "Compte infraction",
+      "destination": null,
+      "handling": "derived_preserved"
+    },
+    {
+      "column": "Corruption",
+      "destination": null,
+      "handling": "derived_preserved"
+    },
+    {
+      "column": "Infractions assimilées",
+      "destination": null,
+      "handling": "derived_preserved"
+    },
+    {
+      "column": "Abus de fonction",
+      "destination": null,
+      "handling": "derived_preserved"
+    },
+    {
+      "column": "Abus de biens sociaux",
+      "destination": null,
+      "handling": "derived_preserved"
+    },
+    {
+      "column": "Concussion",
+      "destination": null,
+      "handling": "derived_preserved"
+    },
+    {
+      "column": "Extorsion de fonds",
+      "destination": null,
+      "handling": "derived_preserved"
+    },
+    {
+      "column": "Détournement de deniers publics",
+      "destination": null,
+      "handling": "derived_preserved"
+    },
+    {
+      "column": "Blanchiment autonome",
+      "destination": null,
+      "handling": "derived_preserved"
+    },
+    {
+      "column": "fraude fiscale",
+      "destination": null,
+      "handling": "derived_preserved"
+    },
+    {
+      "column": "crimes environnementaux",
+      "destination": null,
+      "handling": "derived_preserved"
+    },
+    {
+      "column": "Cybercriminalité",
+      "destination": null,
+      "handling": "derived_preserved"
+    },
+    {
+      "column": "Trafic de Stupéfiants",
+      "destination": null,
+      "handling": "derived_preserved"
+    },
+    {
+      "column": "Traite des personnes",
+      "destination": null,
+      "handling": "derived_preserved"
+    },
+    {
+      "column": "Financement du terrorisme",
+      "destination": null,
+      "handling": "derived_preserved"
+    },
+    {
+      "column": "Commercialisation illicite de produits pharmaceutiques",
+      "destination": null,
+      "handling": "derived_preserved"
+    },
+    {
+      "column": "Commercialisation  illicite de produits agricoles",
+      "destination": null,
+      "handling": "derived_preserved"
+    },
+    {
+      "column": "contenu de la decision 1",
+      "destination": null,
+      "handling": "derived_preserved"
+    },
+    {
+      "column": "Condamné",
+      "destination": null,
+      "handling": "derived_preserved"
+    },
+    {
+      "column": "Relaxé",
+      "destination": null,
+      "handling": "derived_preserved"
+    },
+    {
+      "column": "nature de l'ordonnance de cloture [BI]",
+      "destination": null,
+      "handling": "derived_preserved"
+    },
+    {
+      "column": "ONL",
+      "destination": null,
+      "handling": "derived_preserved"
+    },
+    {
+      "column": "JUGE",
+      "destination": null,
+      "handling": "derived_preserved"
+    },
+    {
+      "column": "juge2",
+      "destination": null,
+      "handling": "derived_preserved"
+    },
+    {
+      "column": "Type de prevenu 2",
+      "destination": null,
+      "handling": "derived_preserved"
+    },
+    {
+      "column": "Personne morale",
+      "destination": null,
+      "handling": "derived_preserved"
+    },
+    {
+      "column": "Personne physique",
+      "destination": null,
+      "handling": "derived_preserved"
+    },
+    {
+      "column": "Personne publique",
+      "destination": null,
+      "handling": "derived_preserved"
+    },
+    {
+      "column": "confis",
+      "destination": null,
+      "handling": "derived_preserved"
+    },
+    {
+      "column": "confisqué",
+      "destination": null,
+      "handling": "derived_preserved"
+    },
+    {
+      "column": "decompte confiscation",
+      "destination": null,
+      "handling": "derived_preserved"
+    },
+    {
+      "column": "Objets saisies",
+      "destination": null,
+      "handling": "derived_preserved"
+    },
+    {
+      "column": "saisie",
+      "destination": null,
+      "handling": "derived_preserved"
+    },
+    {
+      "column": "decompte saisie",
+      "destination": null,
+      "handling": "derived_preserved"
+    },
+    {
+      "column": "Dossiers à caractère transnational",
+      "destination": null,
+      "handling": "derived_preserved"
+    },
+    {
+      "column": "decompte dossiers",
+      "destination": null,
+      "handling": "derived_preserved"
+    }
+  ],
+  "dry_run": {
+    "source_sheet": "AUDIENCES PENALES",
+    "total_rows": 0,
+    "dossier_count": 0,
+    "errors": 0,
+    "warnings": [
+      {
+        "row": null,
+        "message": "Modèle reconnu mais aucune ligne source renseignée ; aucun dossier fictif ne sera créé"
+      }
+    ],
+    "columns": 76
+  }
+}

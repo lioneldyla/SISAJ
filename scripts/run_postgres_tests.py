@@ -10,6 +10,6 @@ from urllib.parse import urlsplit
 url=json.loads(Path('/tmp/sisa-postgres-test.json').read_text())['url']
 assert urlsplit(url).hostname=='127.0.0.1' and urlsplit(url).path=='/sisa_test'
 root=Path(__file__).resolve().parent.parent
-result=subprocess.run([sys.executable,'-m','pytest','-q','tests/test_platform.py','tests/test_app.py','tests/test_legal.py','-k','not backup'],
+result=subprocess.run([sys.executable,'-m','pytest','-q','tests/test_platform.py','tests/test_app.py','tests/test_legal.py','tests/test_registry.py','-k','not backup'],
     cwd=root,env={**os.environ,'DATABASE_URL':url,'SISA_TEST_POSTGRES':'1','SISA_DEPLOYMENT':'local','SISA_BOOTSTRAP_KEY':''})
 raise SystemExit(result.returncode)
