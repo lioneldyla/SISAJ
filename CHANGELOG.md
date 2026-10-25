@@ -1,5 +1,13 @@
 # Historique
 
+## 25 octobre 2026 — v0.5.1 (recette des imports)
+
+- Cellules CSV au-delà des en-têtes conservées et bloquées si non mappées.
+- Résultat de décision classé uniquement sur libellé exact ; texte libre conservé et confirmation humaine requise avant soumission.
+- Lignes strictement identiques : une seule fiche personne, toutes les lignes sources et original conservés.
+- Prévisualisation : feuille source et numéro de ligne des avertissements, distinction entre brouillons importables et dossiers validés.
+- Correctif préparé séparément de la production ; aucune donnée hébergée modifiée.
+
 ## 25 octobre 2026 — v0.5.0 (reprise PPEF)
 
 - Registre complet, règles conditionnelles et valeurs inconnues explicites ; compléments typés additifs sans réécriture au démarrage.

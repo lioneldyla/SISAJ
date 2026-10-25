@@ -207,3 +207,55 @@ def test_new_column_after_76_is_not_misclassified_as_a_calculation(context):
  s.append(values);buf=BytesIO();w.save(buf)
  d=c.post('/registry/imports/preview',headers=h,files={'file':('synthetic.xlsx',buf.getvalue())}).json()
  assert not d['can_confirm'] and d['coverage'][-1]['handling']=='unmapped'
+
+
+def test_csv_values_beyond_headers_are_blocked_and_preserved(context):
+ c,h,_,_=context
+ source=b'rp_number,date_rp,provenance,category\nSYNTH-OVERFLOW,2026-01-01,Fictif,Fictif,information sans en-tete\n'
+ result=c.post('/registry/imports/preview',headers=h,files={'file':('synthetic.csv',source)}).json()
+ assert not result['can_confirm']
+ assert result['coverage'][-1]['column']=='COL_5' and result['coverage'][-1]['handling']=='unmapped'
+ assert 'COL_5' in str(result['errors'])
+ assert c.post('/registry/imports/'+result['preview_id']+'/confirm',headers=h).status_code==422
+ assert not c.get('/cases?q=SYNTH-OVERFLOW',headers=h).json()['items']
+
+
+@pytest.mark.parametrize('text', ['Non condamné','Annulation de la condamnation','Relaxe demandée ; décision en délibéré','Condamnation ?'])
+def test_descriptive_decision_requires_human_classification(context,text):
+ import csv,io
+ c,h,_,_=context;buf=io.StringIO();writer=csv.writer(buf)
+ writer.writerow(['rp_number','date_rp','provenance','category','N° de la décision','Date de la décision','Caractère décision au fond','Contenu de la décision'])
+ writer.writerow(['SYNTH-REVIEW','2026-01-01','Fictif','Fictif','D1','2026-02-01','Oui',text]);source=buf.getvalue().encode()
+ preview=c.post('/registry/imports/preview',headers=h,files={'file':('synthetic.csv',source)}).json()
+ assert preview['can_confirm'] and any('résultat' in w['message'].lower() for w in preview['warnings'])
+ assert c.post('/registry/imports/'+preview['preview_id']+'/confirm',headers=h).status_code==200
+ cid=c.get('/cases?q=SYNTH-REVIEW',headers=h).json()['items'][0]['id']
+ record=c.get(f'/cases/{cid}/register',headers=h).json()
+ assert record['record']['decisions'][0]['content']==text
+ assert record['record']['decisions'][0]['result']=='undetermined'
+ assert any(i['code']=='DECISION_RESULT_REVIEW' for i in record['issues'])
+ assert c.post(f'/cases/{cid}/submit?expected_version=2',headers=h).status_code==422
+ record['record']['decisions'][0].update(result='other',result_other='Qualification vérifiée sur la minute fictive')
+ assert save(c,h,cid,record['record'],2).status_code==200
+ validate(c,h,cid,3)
+ assert c.get('/registry/statements',headers=h).json()['counts'].get('conviction_decisions',0)==0
+
+
+def test_repeated_identical_rows_keep_single_person_and_source_links(context):
+ c,h,_,_=context;lines=csv_source('SYNTH-REPEATED').splitlines();source=b'\n'.join([*lines,lines[1]])+b'\n'
+ preview=c.post('/registry/imports/preview',headers=h,files={'file':('synthetic.csv',source)}).json()
+ assert preview['can_confirm'] and preview['valid_rows']==1 and preview['total_rows']==2
+ result=c.post('/registry/imports/'+preview['preview_id']+'/confirm',headers=h).json()
+ cid=c.get('/cases?q=SYNTH-REPEATED',headers=h).json()['items'][0]['id']
+ record=c.get(f'/cases/{cid}/register',headers=h).json()
+ assert len(record['record']['people'])==1
+ assert record['record']['declarations']['unresolved_people_text'] is None
+ assert [x['row_number'] for x in record['sources']]==[2,3]
+ assert c.get('/registry/imports/'+result['batch_id']+'/source',headers=h).content==source
+
+
+@pytest.mark.parametrize('label,expected',[('Condamnation','conviction'),('Relaxe','acquittal'),('Condamnation et relaxe','mixed'),('Sursis à statuer','stay'),('Irrecevabilité','inadmissible')])
+def test_exact_result_labels_keep_their_declared_meaning(label,expected):
+ from app.ppef_import import convert
+ item=convert({'rp_number':'SYNTH-EXACT','date_rp':'2026-01-01','decision_content':label,'decision_number':'D1','decision_date':'2026-02-01'},2)
+ assert item['record']['decisions'][0]['result']==expected

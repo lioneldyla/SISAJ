@@ -223,6 +223,7 @@ def quality(record,case):
    if case.get(field) is not None and case[field]!=n:add('COUNT_MISMATCH','Effectif déclaré différent des fiches détaillées : '+kind)
  if record.declarations.unresolved_people_text:add('PEOPLE_UNRESOLVED','Identités source groupées à répartir en fiches individuelles')
  for d in record.decisions:
+  if d.content and d.result=='undetermined':add('DECISION_RESULT_REVIEW','Résultat de décision à confirmer sur la pièce source : '+d.reference)
   if d.result not in ('not_rendered','not_recorded','pending') and (not d.number or not d.decision_date):add('DECISION_REFERENCE','Décision rendue sans date ou numéro : '+d.reference)
  for m in record.measures:
   if not m.measure_date:add('MEASURE_DATE','Date de mesure manquante : '+m.reference)

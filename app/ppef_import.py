@@ -3,7 +3,7 @@ import csv,hashlib,io,json,re,unicodedata,zipfile
 from datetime import date,datetime
 from decimal import Decimal,InvalidOperation
 from openpyxl import load_workbook
-from .registry_models import Register,Money,validate_dates
+from .registry_models import Register,Money,validate_dates,quality,CATALOGUES
 
 
 def norm(s):return re.sub(r'[^a-z0-9]+','',unicodedata.normalize('NFKD',str(s or '')).encode('ascii','ignore').decode().lower())
@@ -95,8 +95,12 @@ def convert(raw,line):
  decision=None
  if any(t(k) for k in ('decision_number','decision_date','decision_content','decision_nature','sentence')):
   decision={'reference':'D'+str(line),'number':t('decision_number'),'decision_date':date_value(raw.get('decision_date')),'content':t('decision_content'),**choice(raw.get('decision_nature'),'nature')}
-  content=norm(raw.get('decision_content'))
-  decision['result']='mixed' if 'condamn' in content and ('relax' in content or 'acquitt' in content) else 'conviction' if 'condamn' in content else 'acquittal' if 'relax' in content or 'acquitt' in content else 'other' if content else 'not_recorded'
+  result_key=lambda value:re.sub(r'\s+',' ',unicodedata.normalize('NFKD',str(value or '')).encode('ascii','ignore').decode().casefold()).strip()
+  content=result_key(raw.get('decision_content'))
+  # A word inside a narrative is not a judicial result (e.g. annulment or negation).
+  exact_results={result_key(value):code for code,label in CATALOGUES['result'].items() for value in (code,label)}
+  exact_results.update({result_key(value):code for value,code in [('Condamné','conviction'),('Relaxe','acquittal'),('Relaxé','acquittal'),('Acquittement','acquittal'),('Condamnation et relaxe','mixed')]})
+  decision['result']=exact_results.get(content,'undetermined') if content else 'not_recorded'
   if decision['result']=='other':decision['result_other']=t('decision_content')
   if norm(raw.get('decision_nature')) in ('oui','1','true'):decision.update(nature='merits',nature_other=None)
   if norm(raw.get('decision_nature')) in ('non','0','false'):decision.update(nature='not_merits',nature_other=None)
@@ -137,9 +141,12 @@ def preview(filename,content,sheet=None,date_role=None):
   for idx,head in enumerate(rows[:6]):
    if any(ALIASES.get(norm(x))=='rp_number' for x in head):
     from openpyxl.utils import get_column_letter
+    # CSV rows may be wider than their header. Preserve and reject those extra cells.
+    width=max((len(row) for row in rows[idx:]),default=len(head))
+    head=list(head)+[None]*(width-len(head))
     labels=[];seen_headers=set()
     for i,x in enumerate(head):
-     label=str(x).strip() if x is not None else 'COL_'+str(i+1)
+     label=str(x).strip() if x is not None and str(x).strip() else 'COL_'+str(i+1)
      if norm(label) in seen_headers:
       if title!='AUDIENCES PENALES':errors.append({'row':idx+1,'errors':['En-têtes dupliqués : '+title]})
       label+=' ['+get_column_letter(i+1)+']'
@@ -148,7 +155,6 @@ def preview(filename,content,sheet=None,date_role=None):
     for line,values in enumerate(rows[idx+1:],idx+2):
      # Formula-only rows in report templates are not records.
      if not any(v is not None and str(v).strip() and not (isinstance(v,str) and v.startswith('=')) for v in values):continue
-     if all(v is None or not str(v).strip() or (isinstance(v,str) and v.startswith('=')) for v in values[:min(len(values),39)]):continue
      business=[v for col,(h,v) in enumerate(zip(labels,values)) if ALIASES.get(norm(h)) not in ('matter','order_number') and not (norm(h) in DERIVED_KEYS or (title=='AUDIENCES PENALES' and col>=40 and norm(re.sub(r' \[[A-Z]+\]$','',h)) in ALL_DERIVED_KEYS)) and v is not None and str(v).strip() and not (isinstance(v,str) and v.startswith('='))]
      if not business:continue
      extracted.append((line,dict(zip(labels,values))))
@@ -212,12 +218,17 @@ def preview(filename,content,sheet=None,date_role=None):
   except (ValueError,TypeError) as e:errors.append({'row':line,'errors':[str(e)]})
  items=list(groups.values())
  for item in items:
-  item.pop('_snapshots',None)
+  snapshots=item.pop('_snapshots',[])
   # If grouped identities may represent the same person across decisions, preserve as review input.
-  if len(item['source_rows'])>1 and item['record']['people']:
+  if len(snapshots)>1 and item['record']['people']:
    text=' | '.join(p['display_name'] or 'Identité inconnue' for p in item['record']['people'])
    item['record']['declarations']['unresolved_people_text']=text;item['record']['people']=[]
    warnings.append({'row':item['source_rows'][0],'message':'Plusieurs lignes pour un dossier : personnes à rapprocher, effectifs déclarés conservés une seule fois'})
+  try:
+   record=Register.model_validate(item['record'])
+   for issue in quality(record,item['core']):
+    warnings.append({'row':item['source_rows'][0],'message':'Avant soumission : '+issue['message']})
+  except ValueError as e:errors.append({'row':item['source_rows'][0],'errors':[str(e)]})
  if not rows:warnings.append({'row':None,'message':'Modèle reconnu mais aucune ligne source renseignée ; aucun dossier fictif ne sera créé'})
  if date_role=='rp' and title=='Feuil1':warnings.append({'row':None,'message':'Choix explicite : Date de Feuil1 interprétée comme Date RP ; vérifier cette convention avant confirmation'})
  return {'date_role':date_role,'source_sheet':title,'sheets':sheets,'coverage':coverage,'total_rows':len(rows),'dossier_count':len(items),'items':items,'source_rows':source_rows,'errors':errors,'warnings':warnings,'file_sha256':hashlib.sha256(content).hexdigest()}

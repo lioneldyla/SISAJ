@@ -189,7 +189,7 @@ def install(app,db,locked_case,audit,utcnow,user_from_token,require_roles,safe_c
    payload={'result':result,'filename':file.filename,'original_base64':base64.b64encode(content).decode()}
    c.execute('DELETE FROM registry_previews WHERE created_at<?',(int(time.time())-1800,))
    c.execute('INSERT INTO registry_previews VALUES (?,?,?,?)',(pid,u['id'],int(time.time()),json.dumps(payload,ensure_ascii=False,default=str)))
-  return {'preview_id':pid,'source_sheet':result['source_sheet'],'sheets':result['sheets'],'coverage':result['coverage'],'total_rows':result['total_rows'],'valid_rows':len(result['items']),'error_count':len(result['errors']),'errors':result['errors'][:200],'warnings':result['warnings'][:200],'can_confirm':bool(result['items']) and not result['errors'],'sample':[x['core'] for x in result['items'][:5]],'message':'Original complet archivé seulement à la confirmation ; calculs Excel non pris pour des faits.'}
+  return {'preview_id':pid,'source_sheet':result['source_sheet'],'sheets':result['sheets'],'coverage':result['coverage'],'total_rows':result['total_rows'],'valid_rows':len(result['items']),'error_count':len(result['errors']),'errors':result['errors'][:200],'warnings':result['warnings'][:200],'warning_count':len(result['warnings']),'can_confirm':bool(result['items']) and not result['errors'],'sample':[x['core'] for x in result['items'][:5]],'message':'Original complet archivé seulement à la confirmation ; calculs Excel non pris pour des faits.'}
  @app.post('/registry/imports/{preview_id}/confirm')
  def confirm(preview_id:str,u=Depends(require_roles('admin','supervisor','collector'))):
   if not __import__('re').fullmatch('[A-Za-z0-9_-]{24}',preview_id):raise HTTPException(404,'Aperçu introuvable')

@@ -90,6 +90,15 @@ const root=path.resolve(__dirname,'..');
   await page.getByRole('button',{name:'Créer le compte'}).click();
   await page.getByText('demo_agent',{exact:true}).waitFor();
   await page.locator('nav').getByRole('link',{name:'Imports',exact:true}).click();
+  await page.getByLabel('Fichier CSV ou XLSX').setInputFiles({name:'sans-entete.csv',mimeType:'text/csv',buffer:Buffer.from('rp_number,date_rp,provenance,category\nSYNTH-OVERFLOW,2026-03-01,Fictif,Fictif,information sans entete\n')});
+  await page.getByRole('button',{name:'Contrôler le fichier'}).click();
+  await page.getByText('Colonne renseignée sans correspondance : COL_5',{exact:true}).waitFor();
+  assert(await page.locator('[data-confirm-import]').isDisabled());
+  await page.getByLabel('Fichier CSV ou XLSX').setInputFiles({name:'decision-a-verifier.csv',mimeType:'text/csv',buffer:Buffer.from('rp_number,date_rp,provenance,category,N° de la décision,Date de la décision,Contenu de la décision\nSYNTH-REVIEW,2026-03-01,Fictif,Fictif,D1,2026-03-02,Annulation de la condamnation\n')});
+  await page.getByRole('button',{name:'Contrôler le fichier'}).click();
+  await page.getByText('Avant soumission : Résultat de décision à confirmer sur la pièce source : D2',{exact:false}).waitFor();
+  assert(await page.getByText('Feuille source :',{exact:false}).isVisible());
+  if(process.env.SISA_SCREENSHOT_DIR){fs.mkdirSync(process.env.SISA_SCREENSHOT_DIR,{recursive:true});await page.locator('#toast').waitFor({state:'hidden'});await page.screenshot({path:path.join(process.env.SISA_SCREENSHOT_DIR,'sisa-import-review.png'),fullPage:true,animations:'disabled'});}
   await page.getByLabel('Fichier CSV ou XLSX').setInputFiles({name:'synthetic.csv',mimeType:'text/csv',buffer:Buffer.from('rp_number,rp_year,date_rp,provenance,category,transnational\nSYNTH-UI-IMP,2026,2026-03-01,OPJ fictif,Fraude fictive,Non\n')});
   await page.getByRole('button',{name:'Contrôler le fichier'}).click();
   await page.getByRole('button',{name:'Confirmer la reprise de 1 dossier(s)'}).click();
