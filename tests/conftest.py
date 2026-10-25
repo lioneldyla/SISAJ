@@ -28,4 +28,7 @@ def reset_test_database():
         Path(str(DB_PATH)+suffix).unlink(missing_ok=True)
     with db() as c:
         c.executescript(SCHEMA)
+        from app.legal import SCHEMA as LEGAL_SCHEMA
+        c.executescript(LEGAL_SCHEMA)
+        c.execute('DELETE FROM jurisdictions')
         c.execute("INSERT OR IGNORE INTO indicator_definitions VALUES ('received_cases','Dossiers reçus','dossier distinct','date RP','draft-v0.2',0)")

@@ -1,3 +1,9 @@
+# Évolution v0.4 — 25 octobre 2026
+
+Les quatre lots ont une implémentation locale : concurrence, modèle juridique, indicateurs/rapports et exercice de restauration. Le déploiement Render est bloqué par la demande de moyen de paiement ; les règles officielles restent à approuver. Voir [le bilan courant](validation_v04.md), [le modèle](v04_modele_indicateurs.md) et [la reprise](v04_migration_reprise.md).
+
+---
+
 # Feuille de route SISA — état après plateforme Render v0.3
 
 Les étapes ci-dessous distinguent livraison technique et recette institutionnelle. Le détail de l’état initial reste dans `audit_initial_sisa.md` ; le bilan courant est `validation_plateforme_render.md`.

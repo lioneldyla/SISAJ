@@ -1,4 +1,6 @@
-# Mise en ligne de la plateforme SISA v0.3 sur Render
+# Mise en ligne de la démonstration SISAJ sur Render
+
+Mise à jour v0.4 : voir [le bilan](../docs/validation_v04.md). Le 25 octobre 2026, la création dans l’espace accessible est bloquée par « Payment Information Required ». Aucun service n’a été créé. Sélectionner la branche v0.4 après ajout du moyen de paiement et confirmation des coûts par le propriétaire.
 
 ## Périmètre de cette livraison
 

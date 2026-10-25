@@ -1,5 +1,14 @@
 # Historique
 
+## 25 octobre 2026 — v0.4.0 (démonstration)
+
+- Verrou commun pour mutations/événements/validation, versions incrémentées et contrôlées dans l’interface ; tests concurrents.
+- Modèle juridique additif et formulaires : juridictions, personnes, infractions, décisions/résultats et mesures avec devise.
+- Indicateurs provisoires à dates distinctes, décisions mixtes, inconnus et sommes exactes par devise ; rapports PDF/XLSX.
+- Exercice de restauration SQLite complète, contrôles PostgreSQL/restauration préparés en CI.
+- Accès Render vérifié ; création bloquée par « Payment Information Required ». Aucun déploiement distant effectué.
+
+
 ## 24 octobre 2026 — audit du socle v0.2 hybride
 
 - Sources importées depuis l’archive fournie ; aucun déploiement ni donnée réelle.

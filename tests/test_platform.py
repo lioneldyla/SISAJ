@@ -155,10 +155,10 @@ def test_return_correction_and_statistics_population(client):
     assert client.post(f'/cases/{cid}/validate',headers=h).status_code==200
     assert client.get('/stats',headers=h).json()['received_cases']==1
     changed={**data,'person_physical_count':0}
-    assert client.post(f'/cases/{cid}/corrections',headers=h,json={'case':changed,'reason':'Correction synthetique','expected_version':1}).status_code==200
+    assert client.post(f'/cases/{cid}/corrections',headers=h,json={'case':changed,'reason':'Correction synthetique','expected_version':5}).status_code==200
     assert client.get('/stats',headers=h).json()['received_cases']==0
     detail=client.get(f'/cases/{cid}',headers=h).json()
-    assert detail['status']=='draft' and detail['version']==2 and detail['person_physical_count']==0
+    assert detail['status']=='draft' and detail['version']==6 and detail['person_physical_count']==0
     trace=next(r for r in client.get('/audit',headers=h).json()['items'] if r['action']=='correct')
     content=json.loads(trace['detail_json'])
     assert content['before']['status']=='validated'
