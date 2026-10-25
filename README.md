@@ -1,8 +1,20 @@
-# SISA v0.3 — plateforme web et démonstration Render
+# SISAJ v0.4 — contenu juridique, indicateurs et démonstration
 
 Système de gestion et d’analyse PPEF : interface française responsive, API FastAPI et stockage PostgreSQL sur Render. Évolution du socle v0.2 hybride fourni, conservant les parcours métier existants et le mode local SQLite.
 
 **Version de démonstration, données synthétiques uniquement. Aucun hébergement de données judiciaires réelles n’est autorisé par cette livraison.** Les indicateurs restent provisoires. Les modules officiels complets, la recette institutionnelle et la revue indépendante restent à réaliser.
+
+## Évolution v0.4 du 25 octobre 2026
+
+Formulaires et API de juridictions, personnes, infractions, décisions mixtes et mesures avec devise. Enregistrement transactionnel versionné, historique avant/après, rapports juridiques PDF/XLSX, filtres période/juridiction et catalogue des règles de calcul. La validation et l’ajout d’événements partagent désormais le même verrou ; chaque mutation incrémente la version.
+
+Voir [le modèle et les indicateurs](docs/v04_modele_indicateurs.md), [la migration et la reprise](docs/v04_migration_reprise.md) et [le bilan v0.4](docs/validation_v04.md). L’ancien bilan v0.3 reste une preuve historique. L’approbation métier officielle et la recette distante Render restent distinctes des tests techniques.
+
+```bash
+python scripts/verify_restore.py
+```
+
+Ce contrôle crée et restaure seulement des données synthétiques temporaires. PostgreSQL, restauration PostgreSQL et tests navigateur sont aussi préparés dans le workflow GitHub Actions.
 
 ## Modules livrés
 

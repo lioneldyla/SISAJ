@@ -40,7 +40,7 @@ class Connection:
         for statement in schema.split(';'):
             statement = statement.strip()
             if statement and not statement.startswith('PRAGMA '):
-                self.raw.execute(statement.replace('id INTEGER PRIMARY KEY', 'id SERIAL PRIMARY KEY'))
+                self.raw.execute(re.sub(r'\bid INTEGER PRIMARY KEY\b', 'id SERIAL PRIMARY KEY', statement))
 
     def commit(self): self.raw.commit()
     def rollback(self): self.raw.rollback()

@@ -1,0 +1,6 @@
+/tmp/sisaj-audit-venv/lib/python3.12/site-packages/fastapi/testclient.py:1: StarletteDeprecationWarning: Using `httpx` with `starlette.testclient` is deprecated; install `httpx2` instead.
+  from starlette.testclient import TestClient as TestClient  # noqa
+Restored application: authentication, full legal record, identical indicators and pending import verified.
+SQLite snapshot restored into a new database; 17 tables compared completely; integrity and foreign keys valid.
+Archive SHA256: 1d70a0b8d928973ff22900a047f980dcbe76941e53b3fff6523f61c3a279009c
+Scope: isolated local synthetic exercise; no Render/PostgreSQL restore claimed.

@@ -35,6 +35,34 @@ const root=path.resolve(__dirname,'..');
   await page.getByLabel('Catégorie / qualification source *',{exact:true}).fill('Corruption fictive');
   await page.getByRole('button',{name:'Enregistrer',exact:true}).click();
   await page.getByRole('button',{name:'SYNTH-UI-001',exact:true}).click();
+  await page.getByRole('button',{name:'Consulter le contenu juridique'}).click();
+  await page.getByRole('button',{name:'Ajouter — Personnes',exact:true}).click();
+  const person=page.locator('[data-group="people"]');
+  await person.locator('[data-field="reference"]').fill('P1');
+  await person.locator('[data-field="display_name"]').fill('Personne synthétique');
+  await page.getByRole('button',{name:'Ajouter — Infractions',exact:true}).click();
+  const offence=page.locator('[data-group="offences"]');
+  await offence.locator('[data-field="reference"]').fill('I1');
+  await offence.locator('[data-field="code"]').fill('SYNTH');
+  await offence.locator('[data-field="label"]').fill('Qualification fictive');
+  await page.getByRole('button',{name:'Ajouter — Décisions',exact:true}).click();
+  const decision=page.locator('[data-group="decisions"]');
+  await decision.locator('[data-field="reference"]').fill('D1');
+  await decision.locator('[data-field="decision_date"]').fill('2026-03-01');
+  await page.getByRole('button',{name:'Ajouter — Résultats par personne et infraction',exact:true}).click();
+  const outcome=page.locator('[data-group="outcomes"]');
+  await outcome.locator('[data-field="decision_reference"]').fill('D1');
+  await outcome.locator('[data-field="person_reference"]').fill('P1');
+  await outcome.locator('[data-field="offence_reference"]').fill('I1');
+  await page.getByRole('button',{name:'Ajouter — Mesures et montants',exact:true}).click();
+  const measure=page.locator('[data-group="measures"]');
+  await measure.locator('[data-field="reference"]').fill('M1');
+  await measure.locator('[data-field="measure_date"]').fill('2026-03-01');
+  await measure.locator('[data-field="amount"]').fill('1500.50');
+  await measure.locator('[data-field="currency"]').fill('XOF');
+  await page.getByLabel('Motif de la modification',{exact:true}).fill('Exercice synthétique du formulaire');
+  await page.getByRole('button',{name:'Enregistrer le contenu juridique',exact:true}).click();
+  await page.getByRole('button',{name:'Consulter le contenu juridique'}).waitFor();
   await page.getByRole('button',{name:'Soumettre à validation'}).click();
   await page.getByRole('button',{name:'Valider',exact:true}).click();
   await page.getByRole('dialog').getByText('Validé',{exact:true}).waitFor();
@@ -53,11 +81,12 @@ const root=path.resolve(__dirname,'..');
   await page.locator('nav').getByRole('link',{name:'Statistiques & rapports',exact:true}).click();
   await page.locator('#stats-result .metric-value').first().waitFor();
   assert.equal(await page.locator('#stats-result .metric-value').first().innerText(),'1');
-  for(const [type,signature] of [['PDF','%PDF-'],['XLSX','PK']]){
-   const row=page.locator('.export-option').filter({has:page.locator('.export-type',{hasText:type})});
+  for(const [type,signature] of [['PDF','%PDF-'],['XLSX','PK'],['PDF juridique','%PDF-'],['XLSX juridique','PK']]){
+   const row=page.locator('.export-option').filter({has:page.locator('.export-type',{hasText:new RegExp('^'+type+'$')})});
    const pending=page.waitForEvent('download');await row.getByRole('button').click();const file=await pending;
    const buffer=fs.readFileSync(await file.path());assert(buffer.subarray(0,signature.length).toString()===signature);
   }
+  if(process.env.SISA_SCREENSHOT_DIR){fs.mkdirSync(process.env.SISA_SCREENSHOT_DIR,{recursive:true});await page.screenshot({path:path.join(process.env.SISA_SCREENSHOT_DIR,'sisa-legal-statistics.png'),fullPage:true,animations:'disabled'});}
   await page.locator('nav').getByRole('link',{name:'Journal d’audit',exact:true}).click();
   await page.getByRole('heading',{name:'Dernières opérations'}).waitFor();
   await page.locator('nav').getByRole('link',{name:'Vue d’ensemble',exact:true}).click();
@@ -74,7 +103,7 @@ const root=path.resolve(__dirname,'..');
   await page.getByRole('button',{name:'Se déconnecter',exact:true}).click();
   await page.getByRole('heading',{name:'Heureux de vous retrouver.'}).waitFor();
   assert.deepEqual(errors,[]);
-  console.log('Browser workflow passed: bootstrap, login, creation, submission, validation, users, import confirmation, statistics, PDF/XLSX downloads, responsive navigation, logout; 0 JavaScript errors.');
+  console.log('Browser workflow passed: bootstrap, login, creation, structured legal editor, submission, validation, users, import confirmation, statistics, PDF/XLSX downloads, responsive navigation, logout; 0 JavaScript errors.');
  } finally {
   if(browser)await browser.close();server.kill('SIGTERM');
   await new Promise(resolve=>server.exitCode!==null?resolve():server.once('exit',resolve));

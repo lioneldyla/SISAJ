@@ -1,4 +1,4 @@
-"""SISA v0.2 — local-first MVP for synthetic/pilot data only.
+"""SISAJ v0.4 — local-first demonstration for synthetic/pilot data only.
 No cloud sync, no external AI, no production security certification.
 """
 from __future__ import annotations
@@ -29,7 +29,7 @@ if CLOUD and os.getenv('SISA_DATA_MODE', 'synthetic') != 'synthetic':
     raise RuntimeError('Cette version cloud est réservée aux données synthétiques.')
 SECURE_COOKIE = os.getenv('SISA_SECURE_COOKIE', '1' if CLOUD else '0') == '1'
 SESSION_TTL = 8 * 60 * 60
-app = FastAPI(title='SISA — Système intelligent de suivi et d’analyse judiciaire', version='0.3.0', description='MVP local-first. Données synthétiques uniquement jusqu’à validation institutionnelle.')
+app = FastAPI(title='SISA — Système intelligent de suivi et d’analyse judiciaire', version='0.4.0', description='MVP local-first. Données synthétiques uniquement jusqu’à validation institutionnelle.')
 
 SCHEMA = '''
 PRAGMA foreign_keys=ON;
@@ -49,11 +49,13 @@ CREATE TABLE IF NOT EXISTS indicator_definitions(code TEXT PRIMARY KEY, label TE
 
 def utcnow(): return datetime.now(timezone.utc).replace(microsecond=0).isoformat()
 @contextmanager
-def db():
+def db(write=False):
     if DATABASE_URL:
         con = PostgresConnection(DATABASE_URL)
+        if not write: con.execute('SET TRANSACTION ISOLATION LEVEL REPEATABLE READ')
     else:
         con=sqlite3.connect(DB_PATH, timeout=10); con.row_factory=sqlite3.Row; con.execute('PRAGMA foreign_keys=ON'); con.execute('PRAGMA journal_mode=WAL')
+        con.execute('BEGIN IMMEDIATE' if write else 'BEGIN')
     try:
         yield con
         con.commit()
@@ -65,6 +67,14 @@ def db():
 with db() as c:
     c.executescript(SCHEMA)
     c.execute("INSERT OR IGNORE INTO indicator_definitions VALUES ('received_cases','Dossiers reçus','dossier distinct','date RP','draft-v0.2',0)")
+
+def locked_case(c, case_id, expected_version=None):
+    row = c.execute('SELECT * FROM cases WHERE id=?' + (' FOR UPDATE' if DATABASE_URL else ''), (case_id,)).fetchone()
+    if not row:
+        raise HTTPException(404, 'Dossier introuvable.')
+    if expected_version is not None and row['version'] != expected_version:
+        raise HTTPException(409, 'Le dossier a été modifié. Rechargez sa version actuelle.')
+    return row
 
 def pw_hash(pw: str, salt: Optional[bytes]=None) -> str:
     salt=salt or secrets.token_bytes(16); dk=hashlib.pbkdf2_hmac('sha256',pw.encode(),salt,310000)
@@ -105,13 +115,13 @@ class ReturnIn(BaseModel):
 class UserIn(BaseModel): username: str=Field(min_length=3,max_length=80); password: str=Field(min_length=14,max_length=200); role: str
 
 @app.get('/health')
-def health(): return {'status':'ok','app':'SISA','version':'0.3.0','mode':'render-synthetic' if CLOUD else 'local-first','cloud_sync':'disabled','external_ai':'disabled'}
+def health(): return {'status':'ok','app':'SISA','version':'0.4.0','mode':'render-synthetic' if CLOUD else 'local-first','cloud_sync':'disabled','external_ai':'disabled'}
 @app.post('/auth/bootstrap')
 def bootstrap(x: BootstrapIn, x_sisa_bootstrap_key: Optional[str]=Header(default=None)):
     key = os.getenv('SISA_BOOTSTRAP_KEY', '')
     if (CLOUD and not key) or (key and not hmac.compare_digest(x_sisa_bootstrap_key or '', key)):
         raise HTTPException(403,'Clé d’initialisation requise.')
-    with db() as c:
+    with db(write=True) as c:
         if DATABASE_URL:
             c.execute('SELECT pg_advisory_xact_lock(731025)')
         if c.execute('SELECT COUNT(*) n FROM users').fetchone()['n']:
@@ -123,13 +133,13 @@ def bootstrap(x: BootstrapIn, x_sisa_bootstrap_key: Optional[str]=Header(default
 def login(x: LoginIn, request: Request, response: Response):
     identity = hashlib.sha256((x.username.casefold() + '|' + (request.client.host if request.client else 'unknown')).encode()).hexdigest()
     now = int(time.time())
-    with db() as c:
+    with db(write=True) as c:
         c.execute('DELETE FROM login_attempts WHERE attempted_at<?', (now-900,))
         attempts = c.execute('SELECT COUNT(*) n FROM login_attempts WHERE identity_hash=?', (identity,)).fetchone()['n']
         if attempts >= 5:
             raise HTTPException(429,'Trop de tentatives. Réessayer dans quinze minutes.')
         c.execute('INSERT INTO login_attempts(identity_hash,attempted_at) VALUES(?,?)', (identity,now))
-    with db() as c:
+    with db(write=True) as c:
         u=c.execute('SELECT * FROM users WHERE username=?',(x.username,)).fetchone()
         if not u or not u['active'] or not pw_verify(x.password,u['password_hash']): raise HTTPException(401,'Identifiants incorrects.')
         c.execute('DELETE FROM login_attempts WHERE identity_hash=?', (identity,))
@@ -143,14 +153,14 @@ def me(u=Depends(user_from_token)): return {'id':u['id'],'username':u['username'
 def logout(request: Request, response: Response, u=Depends(user_from_token), authorization: Optional[str]=Header(default=None)):
     token = authorization[7:].strip() if authorization else request.cookies.get('sisa_session', '')
     th=hashlib.sha256(token.encode()).hexdigest()
-    with db() as c: c.execute('DELETE FROM sessions WHERE token_hash=?',(th,)); audit(c,u['id'],'logout','session',None,{})
+    with db(write=True) as c: c.execute('DELETE FROM sessions WHERE token_hash=?',(th,)); audit(c,u['id'],'logout','session',None,{})
     response.delete_cookie('sisa_session', path='/')
     return {'status':'logged_out'}
 @app.post('/users')
 def create_user(x: UserIn,u=Depends(require_roles('admin'))):
     if x.role not in ('collector','supervisor'): raise HTTPException(422,'Rôle autorisé : collector ou supervisor. Le rôle admin est créé séparément.')
     try:
-        with db() as c:
+        with db(write=True) as c:
             cur=c.execute('INSERT INTO users(username,password_hash,role,created_at) VALUES(?,?,?,?)',(x.username,pw_hash(x.password),x.role,utcnow())); audit(c,u['id'],'create','user',cur.lastrowid,{'username':x.username,'role':x.role})
     except (sqlite3.IntegrityError, psycopg.IntegrityError) as e: raise HTTPException(409,'Nom d’utilisateur déjà utilisé.') from e
     return {'status':'created','username':x.username,'role':x.role}
@@ -166,7 +176,7 @@ def normalize_case(x: CaseIn):
 def create_case(x: CaseIn,u=Depends(require_roles('admin','collector','supervisor'))):
     values=normalize_case(x); now=utcnow()
     try:
-        with db() as c:
+        with db(write=True) as c:
             cur=c.execute('''INSERT INTO cases(rp_number,rp_year,date_rp,ri_number,provenance,transnational,category,person_physical_count,person_legal_count,created_by,updated_by,created_at,updated_at) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?)''',(*values,u['id'],u['id'],now,now)); cid=cur.lastrowid; audit(c,u['id'],'create','case',cid,{'rp_number':x.rp_number,'rp_year':x.rp_year})
     except (sqlite3.IntegrityError, psycopg.IntegrityError) as e: raise HTTPException(409,'Dossier déjà existant pour ce numéro RP et cette année.') from e
     return {'id':cid,'status':'draft','version':1}
@@ -189,7 +199,7 @@ def list_cases(q: str|None=None, year: int|None=None, start: date|None=None, end
 @app.get('/cases/{case_id}')
 def get_case(case_id:int,u=Depends(user_from_token)):
     with db() as c:
-        row=c.execute('SELECT * FROM cases WHERE id=?'+(' FOR UPDATE' if DATABASE_URL else ''),(case_id,)).fetchone()
+        row=c.execute('SELECT * FROM cases WHERE id=?',(case_id,)).fetchone()
         if not row: raise HTTPException(404,'Dossier introuvable.')
         events=c.execute('SELECT * FROM case_events WHERE case_id=? ORDER BY event_date,id',(case_id,)).fetchall()
     d=dict(row); d.pop('created_by',None); d.pop('updated_by',None); d['events']=[dict(e) for e in events]; return d
@@ -197,60 +207,65 @@ def get_case(case_id:int,u=Depends(user_from_token)):
 def update_case(case_id:int,x:CaseIn,reason:str,expected_version:int|None=None,u=Depends(require_roles('admin','collector','supervisor'))):
     if len(reason.strip())<5: raise HTTPException(422,'Motif de correction obligatoire (5 caractères minimum).')
     vals=normalize_case(x); now=utcnow()
-    with db() as c:
+    with db(write=True) as c:
         old=c.execute('SELECT * FROM cases WHERE id=?'+(' FOR UPDATE' if DATABASE_URL else ''),(case_id,)).fetchone()
         if not old: raise HTTPException(404,'Dossier introuvable.')
         if expected_version is not None and old['version'] != expected_version: raise HTTPException(409,'Le dossier a été modifié. Rechargez sa version actuelle.')
         if old['status']=='validated' and u['role']!='supervisor' and u['role']!='admin': raise HTTPException(403,'Seul le superviseur peut corriger un dossier validé.')
+        for table,column in (('case_decisions','decision_date'),('case_measures','measure_date')):
+            if c.execute('SELECT 1 FROM '+table+' WHERE case_id=? AND '+column+'<?',(case_id,x.date_rp.isoformat())).fetchone():
+                raise HTTPException(422,'La nouvelle date RP serait postérieure à une décision ou mesure existante.')
         c.execute('UPDATE cases SET rp_number=?,rp_year=?,date_rp=?,ri_number=?,provenance=?,transnational=?,category=?,person_physical_count=?,person_legal_count=?,status=?,return_reason=NULL,version=version+1,updated_by=?,updated_at=?,validated_by=NULL,validated_at=NULL WHERE id=?',(*vals,'draft',u['id'],now,case_id))
         audit(c,u['id'],'correct','case',case_id,{'reason':reason,'before':dict(old),'after':dict(c.execute('SELECT * FROM cases WHERE id=?',(case_id,)).fetchone())})
     return {'id':case_id,'status':'draft','version':old['version']+1,'message':'Correction historisée; dossier remis en brouillon.'}
 @app.post('/cases/{case_id}/submit')
-def submit_case(case_id:int,u=Depends(require_roles('admin','collector','supervisor'))):
-    with db() as c:
-        row=c.execute('SELECT * FROM cases WHERE id=?'+(' FOR UPDATE' if DATABASE_URL else ''),(case_id,)).fetchone()
+def submit_case(case_id:int,expected_version:int|None=None,u=Depends(require_roles('admin','collector','supervisor'))):
+    with db(write=True) as c:
+        row=locked_case(c,case_id,expected_version)
         if not row: raise HTTPException(404,'Dossier introuvable.')
         if row['status'] not in ('draft','returned'): raise HTTPException(409,'Seuls les brouillons ou dossiers retournés peuvent être soumis.')
-        c.execute("UPDATE cases SET status='submitted',return_reason=NULL,updated_by=?,updated_at=? WHERE id=?",(u['id'],utcnow(),case_id)); audit(c,u['id'],'submit','case',case_id,{})
-    return {'id':case_id,'status':'submitted'}
+        c.execute("UPDATE cases SET status='submitted',return_reason=NULL,version=version+1,updated_by=?,updated_at=? WHERE id=?",(u['id'],utcnow(),case_id)); audit(c,u['id'],'submit','case',case_id,{})
+    return {'id':case_id,'status':'submitted','version':row['version']+1}
 @app.post('/cases/{case_id}/validate')
-def validate_case(case_id:int,u=Depends(require_roles('admin','supervisor'))):
-    with db() as c:
-        row=c.execute('SELECT * FROM cases WHERE id=?'+(' FOR UPDATE' if DATABASE_URL else ''),(case_id,)).fetchone()
+def validate_case(case_id:int,expected_version:int|None=None,u=Depends(require_roles('admin','supervisor'))):
+    with db(write=True) as c:
+        row=locked_case(c,case_id,expected_version)
         if not row: raise HTTPException(404,'Dossier introuvable.')
         if row['status']!='submitted': raise HTTPException(409,'Le dossier doit être soumis avant validation.')
-        c.execute("UPDATE cases SET status='validated',validated_by=?,validated_at=?,updated_by=?,updated_at=? WHERE id=?",(u['id'],utcnow(),u['id'],utcnow(),case_id)); audit(c,u['id'],'validate','case',case_id,{})
-    return {'id':case_id,'status':'validated'}
+        c.execute("UPDATE cases SET status='validated',version=version+1,validated_by=?,validated_at=?,updated_by=?,updated_at=? WHERE id=?",(u['id'],utcnow(),u['id'],utcnow(),case_id)); audit(c,u['id'],'validate','case',case_id,{})
+    return {'id':case_id,'status':'validated','version':row['version']+1}
 @app.post('/cases/{case_id}/return')
-def return_case(case_id:int,x:ReturnIn,u=Depends(require_roles('admin','supervisor'))):
-    with db() as c:
-        row=c.execute('SELECT * FROM cases WHERE id=?'+(' FOR UPDATE' if DATABASE_URL else ''),(case_id,)).fetchone()
+def return_case(case_id:int,x:ReturnIn,expected_version:int|None=None,u=Depends(require_roles('admin','supervisor'))):
+    with db(write=True) as c:
+        row=locked_case(c,case_id,expected_version)
         if not row: raise HTTPException(404,'Dossier introuvable.')
         if row['status']!='submitted': raise HTTPException(409,'Seul un dossier soumis peut être retourné.')
-        c.execute("UPDATE cases SET status='returned',return_reason=?,updated_by=?,updated_at=? WHERE id=?",(x.reason,u['id'],utcnow(),case_id)); audit(c,u['id'],'return','case',case_id,{'reason':x.reason})
-    return {'id':case_id,'status':'returned','reason':x.reason}
+        c.execute("UPDATE cases SET status='returned',return_reason=?,version=version+1,updated_by=?,updated_at=? WHERE id=?",(x.reason,u['id'],utcnow(),case_id)); audit(c,u['id'],'return','case',case_id,{'reason':x.reason})
+    return {'id':case_id,'status':'returned','reason':x.reason,'version':row['version']+1}
 
 @app.post('/cases/{case_id}/events')
-def add_event(case_id:int, event_type:str, event_date:date|None=None, decision_number:str|None=None, decision_on_merits:bool|None=None, outcome_conviction:bool|None=None, outcome_acquittal:bool|None=None, fine_amount:str|None=None, seizure_amount:str|None=None, confiscation_amount:str|None=None, notes:str|None=None,u=Depends(require_roles('admin','collector','supervisor'))):
+def add_event(case_id:int, event_type:str, event_date:date|None=None, decision_number:str|None=None, decision_on_merits:bool|None=None, outcome_conviction:bool|None=None, outcome_acquittal:bool|None=None, fine_amount:str|None=None, seizure_amount:str|None=None, confiscation_amount:str|None=None, notes:str|None=None,expected_version:int|None=None,u=Depends(require_roles('admin','collector','supervisor'))):
     for val in (fine_amount,seizure_amount,confiscation_amount):
         if val is not None:
             try:
                 amount = Decimal(val)
                 if not amount.is_finite() or amount < 0: raise ValueError
             except (ValueError, InvalidOperation): raise HTTPException(422,'Les montants doivent être numériques et positifs ou nuls.')
-    with db() as c:
-        case=c.execute('SELECT id,status FROM cases WHERE id=?',(case_id,)).fetchone()
+    with db(write=True) as c:
+        case=locked_case(c,case_id,expected_version)
         if not case: raise HTTPException(404,'Dossier introuvable.')
         if case['status']=='validated': raise HTTPException(409,'Corriger le dossier avec un motif pour le remettre en brouillon avant d’ajouter un événement.')
         cur=c.execute('INSERT INTO case_events(case_id,event_type,event_date,decision_number,decision_on_merits,outcome_conviction,outcome_acquittal,fine_amount,seizure_amount,confiscation_amount,notes,created_by,created_at) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?)',(case_id,event_type,event_date.isoformat() if event_date else None,decision_number,None if decision_on_merits is None else int(decision_on_merits),None if outcome_conviction is None else int(outcome_conviction),None if outcome_acquittal is None else int(outcome_acquittal),fine_amount,seizure_amount,confiscation_amount,notes,u['id'],utcnow())); audit(c,u['id'],'create','case_event',cur.lastrowid,{'case_id':case_id,'event_type':event_type})
-    return {'event_id':cur.lastrowid,'case_id':case_id}
+        c.execute('UPDATE cases SET version=version+1,updated_by=?,updated_at=? WHERE id=?',(u['id'],utcnow(),case_id))
+    return {'event_id':cur.lastrowid,'case_id':case_id,'version':case['version']+1}
 
 @app.get('/stats')
-def stats(start:date|None=None,end:date|None=None,u=Depends(user_from_token)):
+def stats(start:date|None=None,end:date|None=None,jurisdiction:str|None=None,u=Depends(user_from_token)):
     if start and end and start>end: raise HTTPException(422,'La date de début doit précéder la date de fin.')
     clauses=["status='validated'"]; args=[]
     if start: clauses.append('date_rp>=?'); args.append(start.isoformat())
     if end: clauses.append('date_rp<=?'); args.append(end.isoformat())
+    if jurisdiction: clauses.append('EXISTS (SELECT 1 FROM case_profiles p WHERE p.case_id=cases.id AND p.jurisdiction_code=?)'); args.append(jurisdiction)
     wh=' WHERE '+' AND '.join(clauses)
     with db() as c:
         total=c.execute('SELECT COUNT(*) n FROM cases'+wh,args).fetchone()['n']; trans=c.execute('SELECT COUNT(*) n FROM cases'+wh+' AND transnational=1',args).fetchone()['n']
@@ -391,7 +406,7 @@ def import_confirm(preview_id:str,u=Depends(require_roles('admin','collector','s
     if not rows: raise HTTPException(422,'Import bloqué : erreurs à corriger.')
     bid=str(uuid.uuid4()); now=utcnow()
     try:
-        with db() as c:
+        with db(write=True) as c:
             for d in rows:
                 c.execute("INSERT INTO cases(rp_number,rp_year,date_rp,ri_number,provenance,transnational,category,person_physical_count,person_legal_count,source_batch,created_by,updated_by,created_at,updated_at) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?)",(d['rp_number'],d['rp_year'],d['date_rp'],d['ri_number'],d['provenance'],d['transnational'],d['category'],None if d['person_physical_count']=='INVALID' else d['person_physical_count'],None if d['person_legal_count']=='INVALID' else d['person_legal_count'],bid,u['id'],u['id'],now,now))
             c.execute('INSERT INTO import_batches VALUES(?,?,?,?,?,?,?)',(bid,payload['filename'],len(rows),len(rows),u['id'],now,payload['source'])); audit(c,u['id'],'import','batch',bid,{'rows':len(rows),'source':payload['source']})
@@ -464,7 +479,7 @@ def safe_spreadsheet_cell(value):
 
 
 def confirm_postgres_preview(pid, user):
-    with db() as c:
+    with db(write=True) as c:
         row = c.execute('SELECT * FROM import_previews WHERE id=? FOR UPDATE', (pid,)).fetchone()
         if not row:
             raise HTTPException(404,'Aperçu absent, expiré ou déjà utilisé.')
@@ -499,7 +514,7 @@ def ready():
 @app.get('/platform/config')
 def platform_config():
     with db() as c: count = c.execute('SELECT COUNT(*) n FROM users').fetchone()['n']
-    return {'initialized':bool(count),'version':'0.3.0','deployment':'Render' if CLOUD else 'Local',
+    return {'initialized':bool(count),'version':'0.4.0','deployment':'Render' if CLOUD else 'Local',
             'data_mode':'synthetic','bootstrap_key_required':bool(os.getenv('SISA_BOOTSTRAP_KEY')) or CLOUD,
             'official_indicators':False,'external_ai':False,'public_publication':False}
 
@@ -525,7 +540,7 @@ class UserUpdate(BaseModel):
 @app.patch('/users/{user_id}')
 def set_user_active(user_id: int, x: UserUpdate, u=Depends(require_roles('admin'))):
     if user_id == u['id']: raise HTTPException(409,'Vous ne pouvez pas désactiver votre propre compte.')
-    with db() as c:
+    with db(write=True) as c:
         target = c.execute('SELECT id,role FROM users WHERE id=?',(user_id,)).fetchone()
         if not target: raise HTTPException(404,'Utilisateur introuvable.')
         if target['role']=='admin': raise HTTPException(403,'Compte administrateur protégé.')
@@ -540,7 +555,7 @@ class PasswordChange(BaseModel):
 
 @app.post('/auth/password')
 def change_password(x: PasswordChange, response: Response, u=Depends(user_from_token)):
-    with db() as c:
+    with db(write=True) as c:
         row=c.execute('SELECT password_hash FROM users WHERE id=?',(u['id'],)).fetchone()
         if not pw_verify(x.current_password,row['password_hash']): raise HTTPException(403,'Mot de passe actuel incorrect.')
         c.execute('UPDATE users SET password_hash=? WHERE id=?',(pw_hash(x.new_password),u['id']))
@@ -551,6 +566,7 @@ def change_password(x: PasswordChange, response: Response, u=Depends(user_from_t
 
 class EventIn(BaseModel):
     model_config = ConfigDict(str_strip_whitespace=True, extra='forbid')
+    expected_version: int | None = Field(default=None,ge=1)
     event_type: str = Field(min_length=1,max_length=80)
     event_date: date | None = None
     decision_number: str | None = Field(default=None,max_length=100)
@@ -575,23 +591,23 @@ def export_xlsx(u=Depends(require_roles('admin','supervisor'))):
     for row in rows: ws.append([safe_spreadsheet_cell(row[k]) for k in fields])
     ws.freeze_panes='A2'; ws.auto_filter.ref=ws.dimensions
     meta=wb.create_sheet('Méthode'); meta.append(['SISA','Export de dossiers — tous statuts'])
-    for pair in [('Auteur',u['username']),('Date UTC',utcnow()),('Version','0.3.0'),('Méthode','Provisoire, non officielle'),('Données','Synthétiques uniquement')]: meta.append(pair)
+    for pair in [('Auteur',u['username']),('Date UTC',utcnow()),('Version','0.4.0'),('Méthode','Provisoire, non officielle'),('Données','Synthétiques uniquement')]: meta.append(pair)
     buf=io.BytesIO(); wb.save(buf); buf.seek(0)
     return StreamingResponse(buf,media_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',headers={'Content-Disposition':'attachment; filename="sisa_dossiers.xlsx"'})
 
 @app.get('/reports/summary.pdf')
-def report_pdf(start:date|None=None,end:date|None=None,u=Depends(require_roles('admin','supervisor'))):
+def report_pdf(start:date|None=None,end:date|None=None,jurisdiction:str|None=None,u=Depends(require_roles('admin','supervisor'))):
     from reportlab.pdfgen import canvas
     from reportlab.lib.pagesizes import A4
     from reportlab.lib.utils import simpleSplit
-    result=stats(start=start,end=end,u=u)
+    result=stats(start=start,end=end,jurisdiction=jurisdiction,u=u)
     buf=io.BytesIO(); pdf=canvas.Canvas(buf,pagesize=A4)
     pdf.setTitle('SISA - Rapport statistique provisoire')
     y=790
     lines=['SISA / PPEF','Rapport statistique provisoire - donnees synthetiques',
            f"Periode : {start or 'toutes dates'} au {end or 'toutes dates'}",
-           f"Auteur : {u['username']} | UTC : {utcnow()}",'Version : 0.3.0 | Methode : draft-v0.2-not-approved',
-           'Population : dossiers valides uniquement',f"Dossiers recus : {result['received_cases']}",
+           f"Auteur : {u['username']} | UTC : {utcnow()}",'Version : 0.4.0 | Methode : draft-v0.2-not-approved',
+           f"Juridiction : {jurisdiction or 'Toutes'}",'Population : dossiers valides uniquement',f"Dossiers recus : {result['received_cases']}",
            f"Dossiers transnationaux : {result['transnational_cases']}",'Ventilation par categorie :']
     lines += [f"{r['category']} : {r['n']}" for r in result['by_category']]
     lines += ['Ce rapport ne constitue pas une statistique officielle. Validation institutionnelle requise.']
@@ -607,7 +623,7 @@ def report_pdf(start:date|None=None,end:date|None=None,u=Depends(require_roles('
 def operations(u=Depends(require_roles('admin'))):
     return {'database':'PostgreSQL' if DATABASE_URL else 'SQLite','backup_mode':'Sauvegardes gerees Render + export pg_dump' if DATABASE_URL else 'Copie SQLite manuelle',
             'restore_validated':False,'real_data_authorized':False,'external_ai':False,
-            'version':'0.3.0','retention_policy':'A faire approuver','public_publication':False}
+            'version':'0.4.0','retention_policy':'A faire approuver','public_publication':False}
 
 @app.get('/examples/template.csv')
 def template_csv(u=Depends(user_from_token)):
@@ -622,3 +638,7 @@ class CorrectionIn(BaseModel):
 def correct_case_json(case_id:int, x:CorrectionIn, u=Depends(require_roles('admin','collector','supervisor'))):
     # Keep reasons and corrected values out of access-log query strings.
     return update_case(case_id,x.case,x.reason,x.expected_version,u)
+
+# Additive legal model and versioned indicator catalogue.
+from .legal import install_legal
+install_legal(app, db, locked_case, audit, utcnow, user_from_token, require_roles, safe_spreadsheet_cell)
