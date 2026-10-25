@@ -1,0 +1,30 @@
+{
+  "date_utc": "2026-10-25",
+  "url": "https://sisa-platform-demo.onrender.com/",
+  "version": "0.6.1",
+  "deployed_commit": "2d8c7d4168214bdc90266ce48e17295e7d8761ae",
+  "render_deploy": "dep-dbf5he4s728c73e6hma0",
+  "render_status": "Deploy succeeded|Live",
+  "backup_database": "sisa_pre_transfer_20261025_192809",
+  "backup_source_read_only": true,
+  "backup_tables_compared": 24,
+  "backup_sequences_verified": true,
+  "backup_committed_restore_verified": true,
+  "backup_archive_sha256": "a88e273ff8e477f77f3a0dec39e895dd4037df55af841aa33f4f6214c5b54b7f",
+  "cases_preserved": 1500,
+  "reference_documents_backed_up": 48,
+  "browser_checks": {
+    "all_cabinets": 9,
+    "cabinet_1_cases": 169,
+    "other_cabinet_options_retained": true,
+    "return_to_all_cases": 1500,
+    "chart_type_change": true,
+    "indicator_selection": true,
+    "advanced_filters_expand_and_collapse": true,
+    "persons_in_case_records": 3864,
+    "median_days": 148
+  },
+  "automated_validation": "https://github.com/lioneldyla/SISAJ/actions/runs/40207579685",
+  "official_business_rules_changed": false,
+  "synthetic_source_metadata_preserved": true
+}
