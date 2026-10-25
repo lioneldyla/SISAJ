@@ -1,0 +1,6 @@
+npm warn Unknown env config "http-proxy". This will stop working in the next major version of npm.
+
+> sisa-platform@0.5.1 test:e2e
+> node scripts/browser_smoke.cjs
+
+Browser workflow passed: bootstrap, login, creation, structured legal editor, submission, validation, users, import confirmation, statistics, PDF/XLSX downloads, responsive navigation, logout; 0 JavaScript errors.
