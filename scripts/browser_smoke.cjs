@@ -108,6 +108,10 @@ const root=path.resolve(__dirname,'..');
   assert.equal(await page.locator('#dashboard-content .metric-value').first().innerText(),'2');
 
   assert.equal(await page.locator('.global-test-banner,.test-banner').count(),0);
+  await page.locator('#dashboard-more-filters').click();
+  assert(await page.locator('#dashboard-filters [name="provenance"]').isVisible());
+  await page.locator('#dashboard-more-filters').click();
+  assert(!await page.locator('#dashboard-filters [name="provenance"]').isVisible());
   await page.locator('#dashboard-cabinets').selectOption('Cabinet synthétique');
   await page.waitForFunction(()=>document.querySelector('#dashboard-perimeter').textContent.includes('1 dossiers'));
   assert.equal(await page.locator('#dashboard-content .metric-value').first().innerText(),'1');
