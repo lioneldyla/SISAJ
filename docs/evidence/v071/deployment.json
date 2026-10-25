@@ -1,0 +1,26 @@
+{
+  "date_utc": "2026-10-25",
+  "version": "0.7.1",
+  "url": "https://sisa-platform-demo.onrender.com/",
+  "deployed_commit": "479060f7f63e45b22d0f1e766649d321e292366d",
+  "render_deploy": "dep-dbf6u1e7bikc73cdi710",
+  "render_status": "Deploy succeeded|Live",
+  "health_version": "0.7.1",
+  "backup_database": "sisa_pre_transfer_20261025_210027",
+  "backup_tables_compared": 26,
+  "backup_source_read_only": true,
+  "backup_committed_restore_verified": true,
+  "backup_sequences_verified": true,
+  "backup_archive_sha256": "7114e8dbbd45a91e89760534499fb7db093e2c5a5e3015118796fa3fee84f85c",
+  "ci": "https://github.com/lioneldyla/SISAJ/actions/runs/40233539412",
+  "ci_status": "success: 97 backend tests, browser/mobile, PostgreSQL 16/18 and restores",
+  "live_ui": {
+    "cases_all_cabinets": 1500,
+    "visible_cards": 6,
+    "secondary_sections_collapsed": true,
+    "card_click_opens_dossier_list": true,
+    "dossier_list_can_be_collapsed": true
+  },
+  "business_rules_changed": false,
+  "database_migration": false
+}
