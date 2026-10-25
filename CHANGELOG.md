@@ -1,3 +1,15 @@
+# Proposition 0.6.1 — 25 octobre 2026
+
+- Provisionnement HTTP protégé dans tous les modes et commande locale sans mot de passe dans les arguments.
+- Compteurs de connexion par compte et adresse, réservation sous verrous transactionnels, Retry-After, audit minimal des refus et coût PBKDF2 pour les identifiants inconnus.
+- Expiration exacte des sessions appliquée aussi au contrôle des profils.
+- Import simplifié : source byte-exacte, SHA-256, coordonnées et lien dossier, stockage permanent transactionnel ; migration additive `006-import-provenance` ; accès source/provenance supervisé.
+- Rejet des en-têtes dupliqués, colonnes sans en-tête et formules XLSX sur ce parcours ; limites vérifiées avant expansion des grands exposants.
+- Scripts et tests de démonstration utilisent une clé d’initialisation explicitement synthétique ; test navigateur utilise une clé éphémère.
+- Aucun changement des indicateurs officiels, aucun déploiement et aucune écriture dans la base distante.
+
+---
+
 # Historique
 
 ## 25 octobre 2026 — v0.5.1 (recette des imports)
@@ -43,3 +55,4 @@
 - Validation des entiers et montants, conflits 409, neutralisation des formules et verrou sur événements de dossier validé.
 - Tests API sur SQLite/PostgreSQL, parcours navigateur, redémarrage et restauration synthétiques.
 - Aucun déploiement Render ni usage de données réelles ; TDR complet et recette institutionnelle non acquis.
+

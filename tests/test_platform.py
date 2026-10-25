@@ -19,7 +19,7 @@ def client():
 
 
 def auth(c):
-    assert c.post('/auth/bootstrap',json={'username':'admin_test','password':PASSWORD}).status_code==200
+    assert c.post('/auth/bootstrap',headers={'X-SISA-Bootstrap-Key':'Synthetic-Bootstrap-Only-2026!'},json={'username':'admin_test','password':PASSWORD}).status_code==200
     r=c.post('/auth/login',json={'username':'admin_test','password':PASSWORD})
     assert r.status_code==200
     return {'Authorization':'Bearer '+r.json()['access_token']}
@@ -164,3 +164,4 @@ def test_return_correction_and_statistics_population(client):
     assert content['before']['status']=='validated'
     assert content['after']['person_physical_count']==0
     assert content['reason']=='Correction synthetique'
+

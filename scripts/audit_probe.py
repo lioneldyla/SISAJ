@@ -2,14 +2,14 @@ import os, tempfile, json, csv, io
 from pathlib import Path
 os.environ['DATABASE_URL']=''
 os.environ['SISA_DEPLOYMENT']='local'
-os.environ['SISA_BOOTSTRAP_KEY']=''
+os.environ['SISA_BOOTSTRAP_KEY']='Synthetic-Restore-Bootstrap-2026!'
 with tempfile.TemporaryDirectory(prefix='sisa-audit-synthetic-') as tmp:
  os.environ['SISA_DB_PATH']=str(Path(tmp)/'audit.db')
  os.environ['SISA_BACKUP_DIR']=str(Path(tmp)/'backups')
  from fastapi.testclient import TestClient
  from app.main import app, map_import
  c=TestClient(app,raise_server_exceptions=False)
- c.post('/auth/bootstrap',json={'username':'audit_admin','password':'Synthetic-Audit-Password-2026!'})
+ c.post('/auth/bootstrap',headers={'X-SISA-Bootstrap-Key':'Synthetic-Restore-Bootstrap-2026!'},json={'username':'audit_admin','password':'Synthetic-Audit-Password-2026!'})
  token=c.post('/auth/login',json={'username':'audit_admin','password':'Synthetic-Audit-Password-2026!'}).json()['access_token']
  h={'Authorization':'Bearer '+token}
  base=dict(rp_number='RP-SYNTH-A',rp_year=2026,date_rp='2026-01-01',provenance='OPJ fictif',transnational=False,category='=1+1')
@@ -28,3 +28,4 @@ with tempfile.TemporaryDirectory(prefix='sisa-audit-synthetic-') as tmp:
  path=Path(tmp)/'backups'/backup['file']; restored=Path(tmp)/'restored.db';shutil.copy2(path,restored)
  with sqlite3.connect(restored) as con:
   print('backup hash correct',hashlib.sha256(path.read_bytes()).hexdigest()==backup['sha256'],'restored integrity',con.execute('PRAGMA integrity_check').fetchone()[0],'restored cases',con.execute('SELECT COUNT(*) FROM cases').fetchone()[0])
+

@@ -29,7 +29,7 @@ if CLOUD and os.getenv('SISA_DATA_MODE', 'synthetic') != 'synthetic':
     raise RuntimeError('Cette version cloud est réservée aux données synthétiques.')
 SECURE_COOKIE = os.getenv('SISA_SECURE_COOKIE', '1' if CLOUD else '0') == '1'
 SESSION_TTL = 8 * 60 * 60
-app = FastAPI(title='SISA — Système intelligent de suivi et d’analyse judiciaire', version='0.6.0', description='MVP local-first. Données synthétiques uniquement jusqu’à validation institutionnelle.')
+app = FastAPI(title='SISA — Système intelligent de suivi et d’analyse judiciaire', version='0.6.1', description='MVP local-first. Données synthétiques uniquement jusqu’à validation institutionnelle.')
 
 SCHEMA = '''
 PRAGMA foreign_keys=ON;
@@ -66,6 +66,9 @@ def db(write=False):
         con.close()
 with db() as c:
     c.executescript(SCHEMA)
+    from .import_provenance import DDL as IMPORT_SOURCE_DDL
+    c.executescript(IMPORT_SOURCE_DDL)
+    c.execute('INSERT OR IGNORE INTO schema_migrations VALUES (?,?)',('006-import-provenance',utcnow()))
     c.execute("INSERT OR IGNORE INTO indicator_definitions VALUES ('received_cases','Dossiers reçus','dossier distinct','date RP','draft-v0.2',0)")
 
 def locked_case(c, case_id, expected_version=None):
@@ -98,7 +101,7 @@ def user_from_token(request: Request, authorization: Optional[str]=Header(defaul
     token=authorization[7:].strip(); th=hashlib.sha256(token.encode()).hexdigest()
     with db() as c:
         row=c.execute('SELECT u.id,u.username,u.role,u.active,s.expires_at FROM sessions s JOIN users u ON u.id=s.user_id WHERE s.token_hash=?',(th,)).fetchone()
-    if not row or not row['active'] or row['expires_at']<int(time.time()): raise HTTPException(401,'Session invalide ou expirée.')
+    if not row or not row['active'] or row['expires_at']<=int(time.time()): raise HTTPException(401,'Session invalide ou expirée.')
     from .access import augment
     with db() as c:return augment(c,dict(row))
 def require_roles(*roles):
@@ -118,37 +121,50 @@ class ReturnIn(BaseModel):
 class UserIn(BaseModel): username: str=Field(min_length=3,max_length=80); password: str=Field(min_length=14,max_length=200); role: str
 
 @app.get('/health')
-def health(): return {'status':'ok','app':'SISA','version':'0.6.0','mode':'render-synthetic' if CLOUD else 'local-first','cloud_sync':'disabled','external_ai':'disabled'}
-@app.post('/auth/bootstrap')
-def bootstrap(x: BootstrapIn, x_sisa_bootstrap_key: Optional[str]=Header(default=None)):
-    key = os.getenv('SISA_BOOTSTRAP_KEY', '')
-    if (CLOUD and not key) or (key and not hmac.compare_digest(x_sisa_bootstrap_key or '', key)):
-        raise HTTPException(403,'Clé d’initialisation requise.')
+def health(): return {'status':'ok','app':'SISA','version':'0.6.1','mode':'render-synthetic' if CLOUD else 'local-first','cloud_sync':'disabled','external_ai':'disabled'}
+def initialize_admin(x: BootstrapIn):
+    """Shared one-shot transaction for authorized HTTP setup and local operator CLI."""
     with db(write=True) as c:
-        if DATABASE_URL:
-            c.execute('SELECT pg_advisory_xact_lock(731025)')
+        if DATABASE_URL:c.execute('SELECT pg_advisory_xact_lock(731025)')
         if c.execute('SELECT COUNT(*) n FROM users').fetchone()['n']:
             raise HTTPException(409,'Initialisation déjà effectuée.')
         c.execute('INSERT INTO users(username,password_hash,role,created_at) VALUES(?,?,?,?)',(x.username,pw_hash(x.password),'admin',utcnow()))
-        uid=c.execute('SELECT id FROM users WHERE username=?',(x.username,)).fetchone()['id']; audit(c,uid,'bootstrap','user',uid,{'role':'admin'})
+        uid=c.execute('SELECT id FROM users WHERE username=?',(x.username,)).fetchone()['id']
+        audit(c,uid,'bootstrap','user',uid,{'role':'admin'})
     return {'status':'created','username':x.username,'role':'admin','next':'Créer les comptes métier via POST /users.'}
+
+@app.post('/auth/bootstrap')
+def bootstrap(x: BootstrapIn, x_sisa_bootstrap_key: Optional[str]=Header(default=None)):
+    key=os.getenv('SISA_BOOTSTRAP_KEY','')
+    if not key or not hmac.compare_digest((x_sisa_bootstrap_key or '').encode(),key.encode()):
+        raise HTTPException(403,'Clé d’initialisation requise.')
+    return initialize_admin(x)
+
+_DUMMY_PASSWORD_HASH=pw_hash(secrets.token_urlsafe(32))
+
 @app.post('/auth/login')
 def login(x: LoginIn, request: Request, response: Response):
-    identity = hashlib.sha256((x.username.casefold() + '|' + (request.client.host if request.client else 'unknown')).encode()).hexdigest()
-    now = int(time.time())
+    from .auth_limits import reserve,clear_account
+    now=int(time.time());peer=request.client.host if request.client else 'unknown'
     with db(write=True) as c:
-        c.execute('DELETE FROM login_attempts WHERE attempted_at<?', (now-900,))
-        attempts = c.execute('SELECT COUNT(*) n FROM login_attempts WHERE identity_hash=?', (identity,)).fetchone()['n']
-        if attempts >= 5:
-            raise HTTPException(429,'Trop de tentatives. Réessayer dans quinze minutes.')
-        c.execute('INSERT INTO login_attempts(identity_hash,attempted_at) VALUES(?,?)', (identity,now))
+        blocked=reserve(c,x.username,peer,now,postgres=bool(DATABASE_URL))
+        if blocked:audit(c,None,'login_throttled','auth',detail={'scope':blocked['scope']})
+    if blocked:
+        raise HTTPException(429,'Trop de tentatives. Réessayer après le délai indiqué.',headers={'Retry-After':str(blocked['retry_after'])})
     with db(write=True) as c:
-        u=c.execute('SELECT * FROM users WHERE username=?',(x.username,)).fetchone()
-        if not u or not u['active'] or not pw_verify(x.password,u['password_hash']): raise HTTPException(401,'Identifiants incorrects.')
-        c.execute('DELETE FROM login_attempts WHERE identity_hash=?', (identity,))
-        token=secrets.token_urlsafe(40); expires=int(time.time())+SESSION_TTL
-        c.execute('INSERT INTO sessions(token_hash,user_id,expires_at) VALUES(?,?,?)',(hashlib.sha256(token.encode()).hexdigest(),u['id'],expires)); audit(c,u['id'],'login','session',None,{})
-    response.set_cookie('sisa_session', token, httponly=True, secure=SECURE_COOKIE, samesite='strict', max_age=SESSION_TTL, path='/')
+        u=c.execute('SELECT * FROM users WHERE username=?'+(' FOR UPDATE' if DATABASE_URL else ''),(x.username,)).fetchone()
+        matches=pw_verify(x.password,u['password_hash'] if u else _DUMMY_PASSWORD_HASH)
+        allowed=bool(u and u['active'] and matches)
+        if allowed:
+            clear_account(c,x.username)
+            c.execute('DELETE FROM sessions WHERE expires_at<=?',(now,))
+            token=secrets.token_urlsafe(40);expires=now+SESSION_TTL
+            c.execute('INSERT INTO sessions(token_hash,user_id,expires_at) VALUES(?,?,?)',(hashlib.sha256(token.encode()).hexdigest(),u['id'],expires))
+            audit(c,u['id'],'login','session')
+        else:
+            audit(c,None,'login_failure','auth')
+    if not allowed:raise HTTPException(401,'Identifiants incorrects.')
+    response.set_cookie('sisa_session',token,httponly=True,secure=SECURE_COOKIE,samesite='strict',max_age=SESSION_TTL,path='/')
     return {'access_token':token,'token_type':'bearer','expires_in':SESSION_TTL,'role':u['role']}
 @app.get('/auth/me')
 def me(u=Depends(user_from_token)): return {'id':u['id'],'username':u['username'],'role':u['role'],'data_profile':u.get('data_profile')}
@@ -330,38 +346,14 @@ def parse_date(v):
         try: return datetime.strptime(str(v).strip(),fmt).date().isoformat()
         except ValueError: pass
     return None
-def read_rows(filename, content):
-    if Path(filename).suffix.lower()=='.csv':
-        try: return list(csv.DictReader(io.StringIO(content.decode('utf-8-sig')))), None
-        except Exception as e: raise HTTPException(400,'CSV illisible; UTF-8 attendu.') from e
-    if Path(filename).suffix.lower()!='.xlsx': raise HTTPException(415,'Formats acceptés : CSV et XLSX.')
-    try:
-        with zipfile.ZipFile(io.BytesIO(content)) as archive:
-            if sum(i.file_size for i in archive.infolist()) > 60*1024*1024:
-                raise HTTPException(413,'XLSX décompressé trop volumineux.')
-    except zipfile.BadZipFile as e:
-        raise HTTPException(400,'XLSX illisible.') from e
-    try: wb=load_workbook(io.BytesIO(content),read_only=True,data_only=True)
-    except Exception as e: raise HTTPException(400,'XLSX illisible.') from e
-    # canonical template: first row headers; original PPEF: row 3 headers on AUDIENCES PENALES
-    if 'AUDIENCES PENALES' in wb.sheetnames:
-        ws=wb['AUDIENCES PENALES']; header_row=3; source='AUDIENCES PENALES'
-    else: ws=wb.active; header_row=1; source=ws.title
-    if (ws.max_column or 0)>256 or (ws.max_row or 0)>10003:
-        wb.close()
-        raise HTTPException(413,'XLSX limité à 256 colonnes et 10 000 lignes de données.')
-    headers=[str(v).strip() if v is not None else '' for v in next(ws.iter_rows(min_row=header_row,max_row=header_row,values_only=True))]
-    rows=[]
-    for vals in ws.iter_rows(min_row=header_row+1,values_only=True):
-        if not any(v is not None and str(v).strip() for v in vals): continue
-        if len(rows) >= 10000:
-            wb.close()
-            raise HTTPException(413,'Maximum 10 000 lignes par import.')
-        rows.append({headers[i]: vals[i] if i<len(vals) and headers[i] else None for i in range(len(headers)) if headers[i]})
-    wb.close(); return rows, source
+def read_rows(filename,content):
+    from .import_provenance import read_source
+    rows,sheet,_=read_source(filename,content)
+    return rows,sheet
+
 def parse_integer(value):
     number = Decimal(str(value).strip())
-    if not number.is_finite() or number != number.to_integral_value():
+    if not number.is_finite() or not -2147483648 <= number <= 2147483647 or number != number.to_integral_value():
         raise ValueError('Entier requis')
     return int(number)
 
@@ -411,15 +403,26 @@ def validate_import(rows):
 async def import_preview(file: UploadFile=File(...),u=Depends(require_roles('admin','collector','supervisor'))):
     content=await file.read(15*1024*1024+1)
     if len(content)>15*1024*1024: raise HTTPException(413,'Limite prototype : 15 Mo.')
-    rows,source=read_rows(file.filename or 'upload.csv',content); good,errors=validate_import(rows)
-    # preview stored on server as expiring JSON file, not in public cloud
-    pid=secrets.token_urlsafe(18); payload={'user_id':u['id'],'filename':file.filename,'source':source,'created':time.time(),'rows':good if not errors else []}
+    from .import_provenance import read_source,preview_source
+    rows,source,trace=read_source(file.filename or 'upload.csv',content); good,errors=validate_import(rows)
+    for error in errors:
+        index=error.get('row')
+        if index is None:
+            index=next((i for i,r in enumerate(rows,1) if map_import(r)['rp_number']==error.get('rp_number')),None)
+        if index and 1<=index<=len(trace['rows']):
+            location=trace['rows'][index-1]
+            error['row']=location['row'];error['sheet']=location['sheet']
+            error['columns']=[{'column':cell['column'],'header':cell['header']} for cell in location['cells']]
+    # Source is kept privately until confirmation, then archived transactionally.
+    pid=secrets.token_urlsafe(18); payload={'user_id':u['id'],'filename':file.filename,'source':source,'created':time.time(),'rows':good if not errors else [],'provenance':preview_source(content,trace)}
     if DATABASE_URL:
         with db() as c:
             c.execute('DELETE FROM import_previews WHERE created_at<?', (int(time.time())-1800,))
             c.execute('INSERT INTO import_previews VALUES(?,?,?,?)', (pid,u['id'],json.dumps(payload,ensure_ascii=False,default=str),int(time.time())))
     else:
-        (DB_PATH.parent/f'preview_{pid}.json').write_text(json.dumps(payload,ensure_ascii=False,default=str),encoding='utf-8')
+        path=DB_PATH.parent/f'preview_{pid}.json'
+        fd=os.open(path,os.O_WRONLY | os.O_CREAT | os.O_EXCL,0o600)
+        with os.fdopen(fd,'w',encoding='utf-8') as stream:json.dump(payload,stream,ensure_ascii=False,default=str)
     return {'preview_id':pid,'source_sheet':source,'total_rows':len(rows),'valid_rows':len(good),'error_count':len(errors),'errors':errors[:200],'can_confirm':bool(good) and not errors,'sample':good[:5],'message':'Aucune écriture avant confirmation.'}
 @app.post('/imports/{preview_id}/confirm')
 def import_confirm(preview_id:str,u=Depends(require_roles('admin','collector','supervisor'))):
@@ -444,6 +447,8 @@ def import_confirm(preview_id:str,u=Depends(require_roles('admin','collector','s
             for d in rows:
                 c.execute("INSERT INTO cases(rp_number,rp_year,date_rp,ri_number,provenance,transnational,category,person_physical_count,person_legal_count,source_batch,created_by,updated_by,created_at,updated_at) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?)",(d['rp_number'],d['rp_year'],d['date_rp'],d['ri_number'],d['provenance'],d['transnational'],d['category'],None if d['person_physical_count']=='INVALID' else d['person_physical_count'],None if d['person_legal_count']=='INVALID' else d['person_legal_count'],bid,u['id'],u['id'],now,now))
             c.execute('INSERT INTO import_batches VALUES(?,?,?,?,?,?,?)',(bid,payload['filename'],len(rows),len(rows),u['id'],now,payload['source'])); audit(c,u['id'],'import','batch',bid,{'rows':len(rows),'source':payload['source']})
+            from .import_provenance import persist
+            persist(c,bid,payload)
     except (sqlite3.IntegrityError, psycopg.IntegrityError) as e: raise HTTPException(409,'Conflit d’unicité : aucune ligne du lot ne doit être considérée comme importée.') from e
     p.unlink(missing_ok=True)
     return {'status':'imported','batch_id':bid,'imported_rows':len(rows),'note':'Dossiers créés en brouillon; soumission et validation restent requises.'}
@@ -533,6 +538,8 @@ def confirm_postgres_preview(pid, user):
                d['person_physical_count'],d['person_legal_count'],bid,user['id'],user['id'],now,now))
         c.execute('INSERT INTO import_batches VALUES(?,?,?,?,?,?,?)',
                   (bid,payload['filename'],len(payload['rows']),len(payload['rows']),user['id'],now,payload['source']))
+        from .import_provenance import persist
+        persist(c,bid,payload)
         audit(c,user['id'],'import','batch',bid,{'rows':len(payload['rows']),'source':payload['source']})
         c.execute('DELETE FROM import_previews WHERE id=?', (pid,))
     return {'status':'imported','batch_id':bid,'imported_rows':len(payload['rows'])}
@@ -548,8 +555,8 @@ def ready():
 @app.get('/platform/config')
 def platform_config():
     with db() as c: count = c.execute('SELECT COUNT(*) n FROM users').fetchone()['n']
-    return {'initialized':bool(count),'version':'0.6.0','deployment':'Render' if CLOUD else 'Local',
-            'data_mode':'synthetic','bootstrap_key_required':bool(os.getenv('SISA_BOOTSTRAP_KEY')) or CLOUD,
+    return {'initialized':bool(count),'version':'0.6.1','deployment':'Render' if CLOUD else 'Local',
+            'data_mode':'synthetic','bootstrap_key_required':True,
             'official_indicators':False,'external_ai':False,'public_publication':False}
 
 @app.get('/dashboard')
@@ -625,7 +632,7 @@ def export_xlsx(u=Depends(require_roles('admin','supervisor'))):
     for row in rows: ws.append([safe_spreadsheet_cell(row[k]) for k in fields])
     ws.freeze_panes='A2'; ws.auto_filter.ref=ws.dimensions
     meta=wb.create_sheet('Méthode'); meta.append(['SISA','Export de dossiers — tous statuts'])
-    for pair in [('Auteur',u['username']),('Date UTC',utcnow()),('Version','0.6.0'),('Méthode','Provisoire, non officielle'),('Données','Synthétiques uniquement')]: meta.append(pair)
+    for pair in [('Auteur',u['username']),('Date UTC',utcnow()),('Version','0.6.1'),('Méthode','Provisoire, non officielle'),('Données','Synthétiques uniquement')]: meta.append(pair)
     buf=io.BytesIO(); wb.save(buf); buf.seek(0)
     return StreamingResponse(buf,media_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',headers={'Content-Disposition':'attachment; filename="sisa_dossiers.xlsx"'})
 
@@ -657,7 +664,7 @@ def report_pdf(start:date|None=None,end:date|None=None,jurisdiction:str|None=Non
 def operations(u=Depends(require_roles('admin'))):
     return {'database':'PostgreSQL' if DATABASE_URL else 'SQLite','backup_mode':'Sauvegardes gerees Render + export pg_dump' if DATABASE_URL else 'Copie SQLite manuelle',
             'restore_validated':False,'real_data_authorized':False,'external_ai':False,
-            'version':'0.6.0','retention_policy':'A faire approuver','public_publication':False}
+            'version':'0.6.1','retention_policy':'A faire approuver','public_publication':False}
 
 @app.get('/examples/template.csv')
 def template_csv(u=Depends(user_from_token)):
@@ -688,3 +695,27 @@ install_dashboard(app,db,audit,utcnow,user_from_token,require_roles,safe_spreads
 
 from .access import install as install_access
 install_access(app,db,audit,utcnow,require_roles)
+
+
+@app.get('/imports/{batch_id}/provenance')
+def import_provenance(batch_id:str,u=Depends(require_roles('admin','supervisor'))):
+    with db(write=True) as c:
+        row=c.execute('SELECT s.sha256,s.parser_version,s.trace_json,b.filename FROM import_sources s JOIN import_batches b ON b.id=s.batch_id WHERE s.batch_id=?',(batch_id,)).fetchone()
+        if not row:raise HTTPException(404,'Source archivée indisponible pour ce lot.')
+        audit(c,u['id'],'read','import_provenance',batch_id)
+    return {'batch_id':batch_id,'filename':row['filename'],'sha256':row['sha256'],
+            'parser_version':row['parser_version'],**json.loads(row['trace_json'])}
+
+@app.get('/imports/{batch_id}/source')
+def import_original(batch_id:str,u=Depends(require_roles('admin','supervisor'))):
+    import base64
+    with db(write=True) as c:
+        row=c.execute('SELECT s.sha256,s.original_base64,b.filename FROM import_sources s JOIN import_batches b ON b.id=s.batch_id WHERE s.batch_id=?',(batch_id,)).fetchone()
+        if not row:raise HTTPException(404,'Source archivée indisponible pour ce lot.')
+        content=base64.b64decode(row['original_base64'])
+        if hashlib.sha256(content).hexdigest()!=row['sha256']:
+            raise HTTPException(409,'Intégrité de la source incorrecte ; restitution bloquée.')
+        audit(c,u['id'],'export','import_source',batch_id,{'sha256':row['sha256']})
+    suffix='.xlsx' if row['filename'].lower().endswith('.xlsx') else '.csv'
+    return StreamingResponse(io.BytesIO(content),media_type='application/octet-stream',headers={
+        'Content-Disposition':f'attachment; filename="source_import{suffix}"'})

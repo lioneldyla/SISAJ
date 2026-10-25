@@ -11,7 +11,7 @@ PASSWORD='Synthetic-Legal-2026!'
 @pytest.fixture
 def setup():
     with TestClient(app) as c:
-        assert c.post('/auth/bootstrap',json={'username':'legal_admin','password':PASSWORD}).status_code==200
+        assert c.post('/auth/bootstrap',headers={'X-SISA-Bootstrap-Key':'Synthetic-Bootstrap-Only-2026!'},json={'username':'legal_admin','password':PASSWORD}).status_code==200
         h={'Authorization':'Bearer '+c.post('/auth/login',json={'username':'legal_admin','password':PASSWORD}).json()['access_token']}
         data=dict(rp_number='SYNTH-LEGAL-1',rp_year=2026,date_rp='2026-01-10',provenance='Fictif',category='Source fictive',transnational=False)
         cid=c.post('/cases',headers=h,json=data).json()['id']
@@ -143,3 +143,4 @@ def test_event_and_validation_serialize_on_the_same_case(setup):
     detail=c.get(f'/cases/{cid}',headers=h).json()
     assert detail['version']==3
     assert (detail['status']=='validated' and detail['events']==[]) or (detail['status']=='submitted' and len(detail['events'])==1)
+

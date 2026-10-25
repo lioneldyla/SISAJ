@@ -1,0 +1,98 @@
+FFFFFF                                                                   [100%]
+=================================== FAILURES ===================================
+__________________ test_bootstrap_missing_secret_fails_closed __________________
+
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x7f190cd27bc0>
+
+    def test_bootstrap_missing_secret_fails_closed(monkeypatch):
+        monkeypatch.setenv('SISA_BOOTSTRAP_KEY','')
+        with TestClient(app) as c:
+>           assert c.post('/auth/bootstrap',json=BODY).status_code==403
+E           AssertionError: assert 200 == 403
+E            +  where 200 = <Response [200 OK]>.status_code
+E            +    where <Response [200 OK]> = post('/auth/bootstrap', json={'password': 'Synthetic-Platform-2026!', 'username': 'admin_new'})
+E            +      where post = <starlette.testclient.TestClient object at 0x7f190e178590>.post
+
+tests/test_hardening_v061.py:15: AssertionError
+_________________ test_account_throttle_survives_peer_rotation _________________
+
+    def test_account_throttle_survives_peer_rotation():
+        for i in range(5):
+            with TestClient(app,client=(f'192.0.2.{i+1}',50000)) as c:
+                assert c.post('/auth/login',json={'username':'unknown','password':'bad'}).status_code==401
+        with TestClient(app,client=('192.0.2.99',50000)) as c:
+            r=c.post('/auth/login',json={'username':'unknown','password':'bad'})
+>           assert r.status_code==429 and int(r.headers['retry-after'])>0
+E           assert (401 == 429)
+E            +  where 401 = <Response [401 Unauthorized]>.status_code
+
+tests/test_hardening_v061.py:24: AssertionError
+_____________________ test_concurrent_attempt_reservations _____________________
+
+    def test_concurrent_attempt_reservations():
+        def attempt(i):
+            with TestClient(app,client=(f'192.0.2.{i+1}',50000)) as c:
+                return c.post('/auth/login',json={'username':'unknown','password':'bad'}).status_code
+        with ThreadPoolExecutor(max_workers=8) as pool: codes=list(pool.map(attempt,range(8)))
+>       assert codes.count(401)==5 and codes.count(429)==3
+E       assert (8 == 5)
+E        +  where 8 = <built-in method count of list object at 0x7f190d1d10c0>(401)
+E        +    where <built-in method count of list object at 0x7f190d1d10c0> = [401, 401, 401, 401, 401, 401, ...].count
+
+tests/test_hardening_v061.py:31: AssertionError
+____________ test_legacy_source_is_exact_and_coordinates_preserved _____________
+
+    def test_legacy_source_is_exact_and_coordinates_preserved():
+        with TestClient(app) as c:
+            h=auth(c)
+            r=c.post('/imports/preview',headers=h,files={'file':('synthetic.csv',CSV)})
+            assert r.status_code==200
+            p=r.json();assert p['can_confirm']
+            done=c.post(f"/imports/{p['preview_id']}/confirm",headers=h)
+            assert done.status_code==200,done.text
+            bid=done.json()['batch_id']
+            r=c.get(f'/imports/{bid}/source',headers=h)
+>           assert r.status_code==200 and r.content==CSV
+E           assert (404 == 200)
+E            +  where 404 = <Response [404 Not Found]>.status_code
+
+tests/test_hardening_v061.py:45: AssertionError
+__________________ test_duplicate_headers_block_legacy_import __________________
+
+    def test_duplicate_headers_block_legacy_import():
+        with TestClient(app) as c:
+            h=auth(c)
+            r=c.post('/imports/preview',headers=h,files={'file':('synthetic.csv',b'rp_number,rp_number\nA,B\n')})
+>           assert r.status_code==400
+E           assert 200 == 400
+E            +  where 200 = <Response [200 OK]>.status_code
+
+tests/test_hardening_v061.py:56: AssertionError
+____________________ test_legacy_preview_private_on_sqlite _____________________
+
+    def test_legacy_preview_private_on_sqlite():
+        if DATABASE_URL:return
+        with TestClient(app) as c:
+            h=auth(c);p=c.post('/imports/preview',headers=h,files={'file':('synthetic.csv',CSV)}).json()
+>           assert (DB_PATH.parent/f"preview_{p['preview_id']}.json").stat().st_mode & 0o077==0
+E           AssertionError: assert (33188 & 63) == 0
+E            +  where 33188 = os.stat_result(st_mode=33188, st_ino=1087233, st_dev=27, st_nlink=1, st_uid=0, st_gid=0, st_size=318, st_atime=1792951346, st_mtime=1792951346, st_ctime=1792951346).st_mode
+E            +    where os.stat_result(st_mode=33188, st_ino=1087233, st_dev=27, st_nlink=1, st_uid=0, st_gid=0, st_size=318, st_atime=1792951346, st_mtime=1792951346, st_ctime=1792951346) = stat()
+E            +      where stat = (PosixPath('/tmp/sisa-tests-acgxsplu') / 'preview_kJupB8pZCM2GqcmzEFln_JeO.json').stat
+E            +        where PosixPath('/tmp/sisa-tests-acgxsplu') = PosixPath('/tmp/sisa-tests-acgxsplu/test.db').parent
+
+tests/test_hardening_v061.py:62: AssertionError
+=============================== warnings summary ===============================
+../.venv/lib/python3.12/site-packages/fastapi/testclient.py:1
+  /workspace/scratch/1e8b968317ba/.venv/lib/python3.12/site-packages/fastapi/testclient.py:1: StarletteDeprecationWarning: Using `httpx` with `starlette.testclient` is deprecated; install `httpx2` instead.
+    from starlette.testclient import TestClient as TestClient  # noqa
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+=========================== short test summary info ============================
+FAILED tests/test_hardening_v061.py::test_bootstrap_missing_secret_fails_closed
+FAILED tests/test_hardening_v061.py::test_account_throttle_survives_peer_rotation
+FAILED tests/test_hardening_v061.py::test_concurrent_attempt_reservations - a...
+FAILED tests/test_hardening_v061.py::test_legacy_source_is_exact_and_coordinates_preserved
+FAILED tests/test_hardening_v061.py::test_duplicate_headers_block_legacy_import
+FAILED tests/test_hardening_v061.py::test_legacy_preview_private_on_sqlite - ...
+6 failed, 1 warning in 1.13s

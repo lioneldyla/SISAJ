@@ -1,3 +1,22 @@
+# État vérifié le 25 octobre 2026 — incrément 0.6.1
+
+La branche de proposition s’appuie sur le commit `b9e6647e9c2f53d4941c9a50f3e7fb603e42cb6f` du dépôt, dont l’API annonce 0.6.0. Elle conserve l’interface, PostgreSQL, les registres, les exports et les transferts déjà présents.
+
+| Lot | État de cet incrément | Reste à faire |
+|---|---|---|
+| Provisionnement | Clé HTTP obligatoire, commande locale et tests | Revue indépendante, procédure institutionnelle |
+| Connexions | Limites compte/adresse, verrous PostgreSQL, refus audités | CI PostgreSQL et navigateur, contrôle du proxy réel |
+| Sessions | Désactivation et révocation existantes conservées ; borne d’expiration corrigée | Plafond métier et compte technique à arbitrer |
+| Import simplifié | Original et coordonnées source conservés dans la transaction du lot | UI de provenance, rétention approuvée et purge des aperçus |
+| Registre PPEF | Fonctionnalités existantes conservées ; protection contre exposants excessifs | Homologation des règles et reprise pilote autorisée |
+| Déploiement 0.6.1 | Non réalisé ; proposition séparée | Sauvegarde complète, restauration PostgreSQL, recette de migration et autorisation |
+
+Prochaine action indépendante : terminer la recette PostgreSQL/navigateur de cette proposition, vérifier les outils de sauvegarde sur le nouveau schéma, puis étendre l’écran de supervision des imports aux sources archivées. Les arbitrages des indicateurs, de la rétention et des habilitations finales restent humains.
+
+---
+
+## Feuille de route historique ci-dessous
+
 # Évolution v0.5 — reprise PPEF
 
 Les 31 variables, les colonnes complémentaires, l’import complet avec source originale, les six états et le parcours guidé sont implémentés. Voir [le bilan v0.5](validation_v05.md). Les trois jobs CI sont réussis. La base Render réelle a été copiée vers la base isolée disponible, puis ses 17 tables, structures et séquences comparées avant mise en ligne. La validation institutionnelle des nomenclatures et règles demeure distincte des tests.
@@ -33,3 +52,4 @@ Les étapes ci-dessous distinguent livraison technique et recette institutionnel
 | IA locale | non implémentée, aucun appel externe | cas d’usage, données autorisées, mesure des erreurs et validation humaine |
 
 Prochaine étape technique proposée : déployer la **démonstration synthétique** depuis `deploy/RENDER.md`, consigner la recette du domaine cible, puis organiser l’atelier de modèle/indicateurs. Aucune règle métier structurante ni autorisation de données réelles ne doit être déduite de la réussite de la démonstration.
+

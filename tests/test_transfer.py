@@ -4,7 +4,7 @@ from app.main import app,db
 
 def setup(c):
     p='Synthetic-Transfer-2026!'
-    assert c.post('/auth/bootstrap',json={'username':'transfer_admin','password':p}).status_code==200
+    assert c.post('/auth/bootstrap',headers={'X-SISA-Bootstrap-Key':'Synthetic-Bootstrap-Only-2026!'},json={'username':'transfer_admin','password':p}).status_code==200
     return {'Authorization':'Bearer '+c.post('/auth/login',json={'username':'transfer_admin','password':p}).json()['access_token']}
 
 def imported(c,h):
@@ -73,3 +73,4 @@ def test_typed_package_preserves_relationships_but_never_validates():
         assert c.get(f'/registry/documents/{did}/source',headers=h).content==data
         assert c.get('/registry/documents',headers=h).json()['items'][0]['sha256']==hashlib.sha256(data).hexdigest()
         assert c.get('/cases',headers=h).json()['total']==1
+
