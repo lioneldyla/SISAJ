@@ -26,7 +26,7 @@ const root=path.resolve(__dirname,'..');
   await page.getByRole('heading',{name:'Initialiser votre plateforme'}).waitFor();
   await page.getByLabel('Identifiant nominatif',{exact:true}).fill('demo_admin');
   await page.getByLabel('Mot de passe',{exact:true}).fill('Synthetic-Browser-2026!');
-  await page.getByLabel('Clé d’initialisation',{exact:true}).fill(bootstrapKey);
+  await page.locator('input[name="bootstrapKey"]').fill(bootstrapKey);
   await page.getByRole('button',{name:'Créer mon compte administrateur'}).click();
   await page.getByRole('heading',{name:'Vue d’ensemble',exact:true}).waitFor();
   await page.getByRole('button',{name:'Nouveau dossier',exact:true}).click();
