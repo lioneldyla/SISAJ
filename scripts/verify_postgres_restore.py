@@ -39,6 +39,8 @@ with TestClient(app) as client:
     assert client.post(f'/cases/{case}/submit?expected_version=3',headers=headers).status_code==200
     assert client.post(f'/cases/{case}/validate?expected_version=4',headers=headers).status_code==200
     before=client.get('/stats/legal',headers=headers).json()
+    assert client.post('/compliance/reviews',headers=headers,json={'scenario':'restore','result':'pending','expected':'Comparaison intégrale après restauration','observed':'Exercice synthétique en cours de vérification','evidence':'Restauration isolée exécutée par le script de test'}).status_code==200
+    frozen=client.post('/dashboard/snapshots',headers=headers,json={'title':'État fictif avant restauration'}).json()
     preview=client.post('/imports/preview',headers=headers,files={'file':('synthetic.csv',b'rp_number,rp_year,date_rp,provenance,category,transnational\nSYNTH-RESTORE-IMPORT,2026,2026-03-01,Fictif,Fictif,Non\n','text/csv')}).json()['preview_id']
 pg_env={**os.environ,'PGPASSWORD':parts.password or ''}
 base=['-h','127.0.0.1','-p','55432','-U',parts.username or 'sisa']
@@ -77,8 +79,11 @@ with TestClient(app) as c:
  assert c.get('/cases',headers=h).json()['total']==3
  assert c.get('/cases/1/register',headers=h).json()['record']['procedure']['cabinet']=='Cabinet synthétique restauré'
  assert c.get('/registry/imports/'+os.environ['SISA_RESTORE_SOURCE_BATCH']+'/source',headers=h).content.startswith(b'rp_number')
+ assert len(c.get('/compliance/reviews',headers=h).json()['items'])==1
+ snap=c.get('/dashboard/snapshots/'+os.environ['SISA_RESTORE_SNAPSHOT_ID'],headers=h).json()
+ assert snap['sha256']==os.environ['SISA_RESTORE_SNAPSHOT_HASH'] and snap['snapshot']['analysis']['cohort_size']==2
 '''
-    result=subprocess.run([sys.executable,'-c',check],cwd=root,env={**os.environ,'DATABASE_URL':target,'SISA_RESTORE_TEST_HEADER':json.dumps(headers),'SISA_RESTORE_TEST_STATS':json.dumps(before),'SISA_RESTORE_TEST_PREVIEW':preview,'SISA_RESTORE_SOURCE_BATCH':source_batch},capture_output=True)
+    result=subprocess.run([sys.executable,'-c',check],cwd=root,env={**os.environ,'DATABASE_URL':target,'SISA_RESTORE_TEST_HEADER':json.dumps(headers),'SISA_RESTORE_TEST_STATS':json.dumps(before),'SISA_RESTORE_TEST_PREVIEW':preview,'SISA_RESTORE_SOURCE_BATCH':source_batch,'SISA_RESTORE_SNAPSHOT_ID':frozen['id'],'SISA_RESTORE_SNAPSHOT_HASH':frozen['sha256']},capture_output=True)
     if result.returncode:raise RuntimeError('Restored application verification failed; connection details suppressed.')
     print(f'PostgreSQL: pg_dump restored into a NEW isolated database; all {len(tables)} tables match.')
     print('Restored application: authentication, legal relations, indicators, pending import and record count verified.')

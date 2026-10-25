@@ -1,7 +1,8 @@
 export function complianceUI({api,esc,heading,panel,readOnly}){
+ let currentData;
  const labels={passed:'Essai concluant',failed:'À reprendre',pending:'À tester'};
  async function render(){
-  const d=await api('/compliance');const tested=d.scenarios.filter(s=>s.latest).length,passed=d.scenarios.filter(s=>s.latest?.result==='passed').length;
+  const d=await api('/compliance');currentData=d;const tested=d.scenarios.filter(s=>s.latest).length,passed=d.scenarios.filter(s=>s.latest?.result==='passed').length;
   return heading('Conformité et recette','Des exigences suivies, des essais documentés et des limites explicites.')+
    `<div class="compliance-intro"><div><span class="eyebrow">RECETTE PROGRESSIVE</span><h2>Chaque résultat doit pouvoir être expliqué.</h2><p>Les observations ci-dessous concernent les données fictives. Elles ne constituent pas une validation institutionnelle du greffe.</p></div><div class="compliance-score"><strong>${passed} / ${d.scenarios.length}</strong><span>essais déclarés concluants</span><small>${tested} scénario(s) documenté(s)</small></div></div>`+
    panel('Références métier',d.reference_status,`<div class="panel-body">${d.references.length?d.references.map(r=>`<p>${esc(r.filename)} <small>Empreinte : ${esc(r.sha256)}</small></p>`).join(''):'<p>Joindre le TDR et la charte dans Imports & documents. Leur présence seule ne vaut pas approbation des règles.</p>'}<ul>${d.limits.map(l=>`<li>${esc(l)}</li>`).join('')}</ul></div>`)+
@@ -9,7 +10,7 @@ export function complianceUI({api,esc,heading,panel,readOnly}){
    panel('Historique de recette','Les observations sont ajoutées sans écraser les précédentes.','<div id="review-history" class="panel-body"></div>');
  }
  async function mount(){
-  const d=await api('/compliance');
+  const d=currentData||await api('/compliance');
   document.querySelectorAll('[data-review-scenario]').forEach(button=>button.onclick=()=>{
    const s=d.scenarios.find(s=>s.code===button.dataset.reviewScenario);const area=button.closest('article');
    if(area.querySelector('form'))return;
