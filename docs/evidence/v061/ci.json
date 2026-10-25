@@ -1,0 +1,46 @@
+{
+  "date": "2026-10-25",
+  "code_commit": "08936ae7ef37696003aa05c7757db73f629f2301",
+  "run_url": "https://github.com/lioneldyla/SISAJ/actions/runs/40220356880",
+  "local": {
+    "passed": 98,
+    "failed": 0
+  },
+  "cloud_contract": {
+    "passed": 4,
+    "failed": 0
+  },
+  "jobs": [
+    {
+      "name": "sqlite-browser-restore",
+      "conclusion": "success",
+      "job_id": 121250399061,
+      "observed_summary": [
+        "2026-10-25T18:15:55.9837050Z 98 passed, 1 warning in 25.92s",
+        "2026-10-25T18:15:58.5415473Z Restored application: authentication, full legal record, identical indicators and pending import verified.",
+        "2026-10-25T18:15:58.5416229Z SQLite snapshot restored into a new database; 25 tables compared completely; integrity and foreign keys valid.",
+        "2026-10-25T18:16:33.3509540Z Browser workflow passed: bootstrap, login, creation, structured legal editor, submission, validation, users, import confirmation, statistics, PDF/XLSX downloads, responsive navigation, logout; 0 JavaScript errors."
+      ]
+    },
+    {
+      "name": "postgresql (16)",
+      "conclusion": "success",
+      "job_id": 121250399334,
+      "observed_summary": [
+        "2026-10-25T18:16:35.1219404Z 93 passed, 1 deselected, 1 warning in 55.95s",
+        "2026-10-25T18:16:38.7372866Z PostgreSQL: pg_dump restored into a NEW isolated database; all 25 tables match.",
+        "2026-10-25T18:16:38.7374377Z Restored application: authentication, legal relations, indicators, pending import and record count verified."
+      ]
+    },
+    {
+      "name": "postgresql (18)",
+      "conclusion": "success",
+      "job_id": 121250399515,
+      "observed_summary": [
+        "2026-10-25T18:16:21.6014561Z 93 passed, 1 deselected, 1 warning in 38.19s",
+        "2026-10-25T18:16:24.4825576Z PostgreSQL: pg_dump restored into a NEW isolated database; all 25 tables match.",
+        "2026-10-25T18:16:24.4825999Z Restored application: authentication, legal relations, indicators, pending import and record count verified."
+      ]
+    }
+  ]
+}

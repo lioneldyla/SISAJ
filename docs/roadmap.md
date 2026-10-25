@@ -5,13 +5,13 @@ La branche de proposition s’appuie sur le commit `b9e6647e9c2f53d4941c9a50f3e7
 | Lot | État de cet incrément | Reste à faire |
 |---|---|---|
 | Provisionnement | Clé HTTP obligatoire, commande locale et tests | Revue indépendante, procédure institutionnelle |
-| Connexions | Limites compte/adresse, verrous PostgreSQL, refus audités | CI PostgreSQL et navigateur, contrôle du proxy réel |
+| Connexions | Limites compte/adresse, verrous PostgreSQL, refus audités | CI PostgreSQL/navigateur réussie ; contrôle du proxy réel restant |
 | Sessions | Désactivation et révocation existantes conservées ; borne d’expiration corrigée | Plafond métier et compte technique à arbitrer |
 | Import simplifié | Original et coordonnées source conservés dans la transaction du lot | UI de provenance, rétention approuvée et purge des aperçus |
 | Registre PPEF | Fonctionnalités existantes conservées ; protection contre exposants excessifs | Homologation des règles et reprise pilote autorisée |
 | Déploiement 0.6.1 | Non réalisé ; proposition séparée | Sauvegarde complète, restauration PostgreSQL, recette de migration et autorisation |
 
-Prochaine action indépendante : terminer la recette PostgreSQL/navigateur de cette proposition, vérifier les outils de sauvegarde sur le nouveau schéma, puis étendre l’écran de supervision des imports aux sources archivées. Les arbitrages des indicateurs, de la rétention et des habilitations finales restent humains.
+Prochaine action indépendante : la recette PostgreSQL/navigateur étant réussie, vérifier les outils de sauvegarde sur le nouveau schéma, puis étendre l’écran de supervision des imports aux sources archivées. Les arbitrages des indicateurs, de la rétention et des habilitations finales restent humains.
 
 ---
 

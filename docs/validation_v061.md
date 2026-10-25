@@ -64,3 +64,10 @@ Conserver la branche séparée de main. Vérifier la CI PostgreSQL/navigateur, l
 Le rollback de code n’exige pas de supprimer `import_sources`. Conserver la table et ses sources lors d’un retour au code précédent, afin d’éviter une perte d’audit. La rétention, la purge des aperçus, le chiffrement et les habilitations finales restent à instruire. Aucun jeu de données réel, indicateur officiel ou publication institutionnelle n’est validé par ces résultats.
 
 Prochaine action : terminer les contrôles CI PostgreSQL/navigateur, puis adapter et éprouver les sauvegardes sur le schéma complet avant de préparer un déploiement révisable.
+
+
+## Résultats CI finaux observés
+
+Le commit de code `08936ae7ef37696003aa05c7757db73f629f2301` a passé les trois jobs du run [40220356880](https://github.com/lioneldyla/SISAJ/actions/runs/40220356880) : SQLite/navigateur/restauration, PostgreSQL 16 et PostgreSQL 18. Les jobs PostgreSQL ont chacun 93 tests réussis (une sélection écartée), puis une restauration pg_dump dans une base neuve avec comparaison des 25 tables et reprise de l’application. Le job SQLite exécute les 98 tests, les quatre tests de contrat, la restauration et le parcours navigateur. Voir `evidence/v061/ci.json` pour les extraits observés.
+
+Le premier run avait détecté un sélecteur de test navigateur trop strict pour le champ de clé : corrigé en ciblant le champ nommé explicitement. Le second run a réussi. Le téléchargement local de Chromium reste une limite de cet espace, sans remettre en cause l’exécution navigateur observée dans la CI. Ces validations ont eu lieu sur des environnements temporaires synthétiques, pas sur la base Render de démonstration. La proposition n’a pas été fusionnée ou déployée.
