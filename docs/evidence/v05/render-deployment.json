@@ -1,0 +1,30 @@
+{
+  "verified_at": "2026-10-25T07:38:00Z",
+  "url": "https://sisa-platform-demo.onrender.com/",
+  "version": "0.5.0",
+  "deployment_commit": "85c51eefe2909e4068aee2adeb67c4bbf92d58e6",
+  "render_deploy_id": "dep-dber2afb9u1s73alncig",
+  "render_status": "Deploy succeeded|Live",
+  "ready": {
+    "status": "ready",
+    "storage": "postgresql",
+    "data_mode": "synthetic"
+  },
+  "initialized": true,
+  "existing_authenticated_session_preserved": true,
+  "pilotage_states_checked": [
+    "Activité",
+    "Contentieux",
+    "Délais & attentes",
+    "Charge",
+    "Finances",
+    "Qualité",
+    "Prévisions"
+  ],
+  "forecast_unavailable_without_history": true,
+  "browser_javascript_errors": 0,
+  "source_workbook_imported": false,
+  "backup_proof": "render-restore.json",
+  "scope": "Vérification technique de démonstration ; aucune recette institutionnelle revendiquée.",
+  "handoff": "Contrôle du navigateur arrêté à la demande de l'utilisateur ; aucune autre session ne doit redéployer ou restaurer sans vérifier ces preuves."
+}

@@ -76,6 +76,12 @@ Une copie logique de l'état actuel a donc été réalisée vers cette cible dis
 
 La copie restaurée est conservée dans la base Render isolée, indépendante du disque temporaire du service. L'archive locale privée seule est temporaire et ne doit pas être considérée comme une sauvegarde durable. La base isolée utilise le plan Basic-256mb/15 Go affiché à **10,50 USD/mois**, au prorata ; aucune base supplémentaire n'a été créée par l'agent. Ne pas supprimer cette copie avant décision de rétention/retour arrière. La v0.5 peut être intégrée après cette vérification ; le statut réel du déploiement doit être contrôlé sur `/platform/config` et `/ready`.
 
+### Déploiement vérifié
+
+La PR [#2](https://github.com/lioneldyla/SISAJ/pull/2) est intégrée. Render a déployé le commit `85c51eefe2909e4068aee2adeb67c4bbf92d58e6` avec le statut `Deploy succeeded|Live` (déploiement `dep-dber2afb9u1s73alncig`). `/platform/config` indique **0.5.0**, initialisation conservée ; `/ready` répond 200 et stockage PostgreSQL. La session authentifiée existante fonctionne. Les six états et l'onglet Prévisions ont été consultés sur le domaine déployé ; aucun message d'erreur JavaScript. Aucun dossier ni import du fichier joint ajouté lors de cette vérification. Voir `evidence/v05/render-deployment.json` et `evidence/v05/render-live.png`.
+
+Le contrôle du navigateur s'arrête à la demande de l'utilisateur pour libérer l'onglet à l'autre conversation. Ne pas refaire une restauration ou un déploiement sur la seule lecture de journaux TLS/WAL : consulter les preuves ci-dessus.
+
 ## Limites explicites
 
 La clé historique RP + année est conservée. Deux juridictions avec le même RP/année demandent encore un arbitrage de clé et une migration distincte. Les nomenclatures ne sont pas homologuées. Le registre n’est pas une décision judiciaire authentique. Les essais sont synthétiques ; pas de recette institutionnelle ni de benchmark matériel revendiqués. La confidentialité en production, la rétention des originaux et les règles de diffusion restent à valider avant données réelles.
