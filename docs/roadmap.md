@@ -1,6 +1,6 @@
 # Évolution v0.5 — reprise PPEF
 
-Les 31 variables, les colonnes complémentaires, l’import complet avec source originale, les six états et le parcours guidé sont implémentés. Voir [le bilan v0.5](validation_v05.md). Reste la restauration de contrôle de la base Render, puis la mise en ligne après vérification ; aucune nouvelle dépense engagée. La validation institutionnelle des nomenclatures et règles demeure distincte des tests.
+Les 31 variables, les colonnes complémentaires, l’import complet avec source originale, les six états et le parcours guidé sont implémentés. Voir [le bilan v0.5](validation_v05.md). Les trois jobs CI sont réussis. La base Render réelle a été copiée vers la base isolée disponible, puis ses 17 tables, structures et séquences comparées avant mise en ligne. La validation institutionnelle des nomenclatures et règles demeure distincte des tests.
 
 ---
 

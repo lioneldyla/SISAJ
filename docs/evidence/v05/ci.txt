@@ -1,0 +1,24 @@
+Commit validé : 7d26f11b1c0ad9b383150f17c12898c73a110aa4
+Workflow : https://github.com/lioneldyla/SISAJ/actions/runs/40172798317
+Résultat : tous les jobs réussis.
+
+Job 121107020914
+2026-10-25T07:27:17.8289287Z 64 passed, 1 warning in 10.60s
+2026-10-25T07:27:18.2777793Z 4 passed in 0.20s
+2026-10-25T07:27:19.2575573Z Restored application: authentication, full legal record, identical indicators and pending import verified.
+2026-10-25T07:27:19.2576083Z SQLite snapshot restored into a new database; 21 tables compared completely; integrity and foreign keys valid.
+2026-10-25T07:27:19.2576553Z Archive SHA256: 625fac7b4fa9a57d0f59b98caf041c9e440f69944406b1fb7dd296689f66d505
+2026-10-25T07:27:19.2576879Z Scope: isolated local synthetic exercise; no Render/PostgreSQL restore claimed.
+2026-10-25T07:27:48.9057970Z Browser workflow passed: bootstrap, login, creation, structured legal editor, submission, validation, users, import confirmation, statistics, PDF/XLSX downloads, responsive navigation, logout; 0 JavaScript errors.
+
+Job 121107021023
+2026-10-25T07:27:48.5968707Z 59 passed, 1 deselected, 1 warning in 26.60s
+2026-10-25T07:27:51.4802669Z PostgreSQL: pg_dump restored into a NEW isolated database; all 21 tables match.
+2026-10-25T07:27:51.4806649Z Restored application: authentication, legal relations, indicators, pending import and record count verified.
+2026-10-25T07:27:51.4809463Z Archive SHA256: c486dc5d28b13e9b4382a6a001fed96e861722415a53045f5e64c05c9270e351
+
+Job 121107021162
+2026-10-25T07:27:50.9845147Z 59 passed, 1 deselected, 1 warning in 28.69s
+2026-10-25T07:27:54.0715888Z PostgreSQL: pg_dump restored into a NEW isolated database; all 21 tables match.
+2026-10-25T07:27:54.0717440Z Restored application: authentication, legal relations, indicators, pending import and record count verified.
+2026-10-25T07:27:54.0719010Z Archive SHA256: 2ba4294918a03562bd7e5858196f4e85076f6b121bd0a49025d6834f7d509cef

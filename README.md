@@ -10,7 +10,7 @@ Reprise des 31 variables et des colonnes complémentaires du classeur PPEF : sai
 
 [Bilan et limites v0.5](docs/validation_v05.md) · [Correspondances du classeur](docs/ppef_column_mapping.json) · [Planche visuelle](docs/planche_visuelle.html).
 
-**La v0.5 est une livraison de code à tester/intégrer ; la démonstration Render reste en v0.4 jusqu’à restauration vérifiée de sa sauvegarde.** Aucun import du fichier joint sur le site ni modification de sa base effectués dans cette itération.
+**La v0.5 a passé les contrôles SQLite, navigateur et PostgreSQL 16/18. La sauvegarde réelle v0.4 a été restaurée et comparée dans une base Render isolée avant mise en ligne.** Voir les preuves dans `docs/evidence/v05/`. Aucun import du fichier joint sur le site.
 
 ## Évolution v0.4 du 25 octobre 2026
 
@@ -42,7 +42,7 @@ La passerelle historique `cloud_aggregates/` est conservée séparément. Elle n
 
 Suivre [le guide Render](deploy/RENDER.md). Le fichier [render.yaml](render.yaml) déclare un service web et une base PostgreSQL privée, dans la même région. `/ready` vérifie la base. Aucun stockage de dossiers ne repose sur le disque éphémère du service web. Il n’y a pas de mot de passe administrateur par défaut.
 
-**Démonstration v0.4 déployée et disponibilité PostgreSQL/HTTPS vérifiée : https://sisa-platform-demo.onrender.com/ . Le premier administrateur reste à initialiser ; la recette authentifiée et la restauration de la base Render restent à achever.** Les ressources sont payantes selon les plans choisis ; contrôler tarifs, région et disponibilité dans Render avant création.
+**Démonstration : https://sisa-platform-demo.onrender.com/ . Le premier administrateur est initialisé. La sauvegarde réelle et la disponibilité sont suivies dans le bilan v0.5 ; la recette institutionnelle reste à réaliser.** Les ressources sont payantes selon les plans choisis ; contrôler tarifs, région et disponibilité dans Render avant création.
 
 ## Développement local synthétique
 
