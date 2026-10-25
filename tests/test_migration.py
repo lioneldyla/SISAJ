@@ -20,5 +20,5 @@ def test_additive_startup_preserves_all_legacy_tables(tmp_path):
     assert result.returncode==0,result.stderr.decode()
     with sqlite3.connect(path) as c:
         assert {table:c.execute('SELECT * FROM '+table+' ORDER BY 1').fetchall() for table in tables}==before
-        assert c.execute('SELECT version FROM schema_migrations').fetchall()==[('004-legal-additive',)]
+        assert c.execute('SELECT version FROM schema_migrations').fetchall()==[('004-legal-additive',),('005-complete-register',)]
         assert c.execute('SELECT COUNT(*) FROM case_people').fetchone()[0]==0

@@ -36,31 +36,47 @@ const root=path.resolve(__dirname,'..');
   await page.getByRole('button',{name:'Enregistrer',exact:true}).click();
   await page.getByRole('button',{name:'SYNTH-UI-001',exact:true}).click();
   await page.getByRole('button',{name:'Consulter le contenu juridique'}).click();
+  await page.locator('[data-field="procedure.orientation"]').selectOption('prosecution');
+  await page.locator('[data-field="procedure.orientation_date"]').fill('2026-02-11');
+  await page.locator('[data-field="procedure.cabinet_state"]').selectOption('known');
+  await page.locator('[data-field="procedure.cabinet"]').fill('Cabinet synthétique');
+  await page.locator('[data-registry-tab="people"]').click();
+  await page.locator('[data-field="count_basis"]').selectOption('enumerated');
   await page.getByRole('button',{name:'Ajouter — Personnes',exact:true}).click();
   const person=page.locator('[data-group="people"]');
-  await person.locator('[data-field="reference"]').fill('P1');
   await person.locator('[data-field="display_name"]').fill('Personne synthétique');
+  await person.locator('[data-field="profession"]').selectOption('other');
+  await person.locator('[data-field="profession_other"]').fill('Profession synthétique');
+  await page.locator('[data-registry-tab="offences"]').click();
   await page.getByRole('button',{name:'Ajouter — Infractions',exact:true}).click();
   const offence=page.locator('[data-group="offences"]');
-  await offence.locator('[data-field="reference"]').fill('I1');
-  await offence.locator('[data-field="code"]').fill('SYNTH');
-  await offence.locator('[data-field="label"]').fill('Qualification fictive');
+  await offence.locator('[data-field="parquet_label"]').fill('Qualification fictive Parquet');
+  await offence.locator('[data-field="tribunal_label"]').fill('Qualification fictive tribunal');
+  await page.locator('[data-registry-tab="decisions"]').click();
   await page.getByRole('button',{name:'Ajouter — Décisions',exact:true}).click();
   const decision=page.locator('[data-group="decisions"]');
-  await decision.locator('[data-field="reference"]').fill('D1');
+  await decision.locator('[data-field="number"]').fill('DEC-SYNTH-001');
   await decision.locator('[data-field="decision_date"]').fill('2026-03-01');
-  await page.getByRole('button',{name:'Ajouter — Résultats par personne et infraction',exact:true}).click();
+  await decision.locator('[data-field="nature"]').selectOption('merits');
+  await decision.locator('[data-field="result"]').selectOption('conviction');
+  await page.getByRole('button',{name:'Ajouter — Résultats individuels',exact:true}).click();
   const outcome=page.locator('[data-group="outcomes"]');
-  await outcome.locator('[data-field="decision_reference"]').fill('D1');
-  await outcome.locator('[data-field="person_reference"]').fill('P1');
-  await outcome.locator('[data-field="offence_reference"]').fill('I1');
-  await page.getByRole('button',{name:'Ajouter — Mesures et montants',exact:true}).click();
+  for(const [field,value]of [['decision_reference','D1'],['person_reference','P1'],['offence_reference','I1']]){
+   await outcome.locator('[data-field="'+field+'"]').focus();
+   await outcome.locator('[data-field="'+field+'"]').selectOption(value);
+  }
+  await page.locator('[data-registry-tab="measures"]').click();
+  await page.getByRole('button',{name:'Ajouter — Biens & montants',exact:true}).click();
   const measure=page.locator('[data-group="measures"]');
-  await measure.locator('[data-field="reference"]').fill('M1');
   await measure.locator('[data-field="measure_date"]').fill('2026-03-01');
-  await measure.locator('[data-field="amount"]').fill('1500.50');
-  await measure.locator('[data-field="currency"]').fill('XOF');
-  await page.getByLabel('Motif de la modification',{exact:true}).fill('Exercice synthétique du formulaire');
+  await measure.locator('[data-field="object_kind"]').selectOption('vehicle');
+  await measure.locator('[data-field="description"]').fill('Véhicule de démonstration');
+  await measure.locator('[data-field="amount.state"]').selectOption('known');
+  await measure.locator('[data-field="amount.value"]').fill('1500.50');
+  await page.getByLabel('Motif de la modification',{exact:true}).fill('Exercice synthétique du registre complet');
+  await page.locator('[data-registry-tab="people"]').click();
+  const shots=process.env.SISA_SCREENSHOT_DIR;
+  if(shots){fs.mkdirSync(shots,{recursive:true});await page.screenshot({path:path.join(shots,'ppef-register-desktop.png'),fullPage:false});await page.setViewportSize({width:390,height:844});assert(await page.evaluate(()=>document.documentElement.scrollWidth<=window.innerWidth));await page.screenshot({path:path.join(shots,'ppef-register-mobile.png'),fullPage:false});await page.setViewportSize({width:1440,height:1050});}
   await page.getByRole('button',{name:'Enregistrer le contenu juridique',exact:true}).click();
   await page.getByRole('button',{name:'Consulter le contenu juridique'}).waitFor();
   await page.getByRole('button',{name:'Soumettre à validation'}).click();
@@ -76,16 +92,18 @@ const root=path.resolve(__dirname,'..');
   await page.locator('nav').getByRole('link',{name:'Imports',exact:true}).click();
   await page.getByLabel('Fichier CSV ou XLSX').setInputFiles({name:'synthetic.csv',mimeType:'text/csv',buffer:Buffer.from('rp_number,rp_year,date_rp,provenance,category,transnational\nSYNTH-UI-IMP,2026,2026-03-01,OPJ fictif,Fraude fictive,Non\n')});
   await page.getByRole('button',{name:'Contrôler le fichier'}).click();
-  await page.getByRole('button',{name:'Confirmer l’import de 1 ligne(s)'}).click();
+  await page.getByRole('button',{name:'Confirmer la reprise de 1 dossier(s)'}).click();
   await page.getByRole('cell',{name:'synthetic.csv',exact:true}).waitFor();
-  await page.locator('nav').getByRole('link',{name:'Statistiques & rapports',exact:true}).click();
+  await page.locator('nav').getByRole('link',{name:'Pilotage & rapports',exact:true}).click();
   await page.locator('#stats-result .metric-value').first().waitFor();
   assert.equal(await page.locator('#stats-result .metric-value').first().innerText(),'1');
-  for(const [type,signature] of [['PDF','%PDF-'],['XLSX','PK'],['PDF juridique','%PDF-'],['XLSX juridique','PK']]){
+  for(const [type,signature] of [['PDF','%PDF-'],['XLSX','PK'],['XLSX registre','PK'],['JSON','{']]){
    const row=page.locator('.export-option').filter({has:page.locator('.export-type',{hasText:new RegExp('^'+type+'$')})});
    const pending=page.waitForEvent('download');await row.getByRole('button').click();const file=await pending;
    const buffer=fs.readFileSync(await file.path());assert(buffer.subarray(0,signature.length).toString()===signature);
   }
+  for(const tab of ['content','delays','workload','money','quality','forecast']){await page.locator('[data-statement="'+tab+'"]').click();assert(await page.locator('#stats-result').innerText());}
+  await page.locator('[data-statement="activity"]').click();
   if(process.env.SISA_SCREENSHOT_DIR){fs.mkdirSync(process.env.SISA_SCREENSHOT_DIR,{recursive:true});await page.screenshot({path:path.join(process.env.SISA_SCREENSHOT_DIR,'sisa-legal-statistics.png'),fullPage:true,animations:'disabled'});}
   await page.locator('nav').getByRole('link',{name:'Journal d’audit',exact:true}).click();
   await page.getByRole('heading',{name:'Dernières opérations'}).waitFor();

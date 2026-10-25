@@ -25,8 +25,15 @@ with tempfile.TemporaryDirectory(prefix='sisaj-restore-') as tmp:
         h={'Authorization':'Bearer '+c.post('/auth/login',json={'username':'restore_admin','password':password}).json()['access_token']}
         cid=c.post('/cases',headers=h,json={'rp_number':'SYNTH-RESTORE','rp_year':2026,'date_rp':'2026-01-01','category':'Test fictif','provenance':'Test fictif','transnational':False}).json()['id']
         assert c.put(f'/cases/{cid}/legal',headers=h,json={'expected_version':1,'reason':'Exercice de restauration','people':[{'reference':'P1','kind':'physical','role':'defendant','display_name':'Personne fictive'}],'offences':[{'reference':'I1','code':'TEST','label':'Fictif'}],'decisions':[{'reference':'D1','decision_date':'2026-02-01','on_merits':True,'outcomes':[{'person_reference':'P1','offence_reference':'I1','result':'conviction'}]}],'measures':[{'reference':'M1','kind':'fine','measure_date':'2026-02-01','amount':'1200.50','currency':'XOF'}]}).status_code==200
-        assert c.post(f'/cases/{cid}/submit?expected_version=2',headers=h).status_code==200
-        assert c.post(f'/cases/{cid}/validate?expected_version=3',headers=h).status_code==200
+        full=c.get(f'/cases/{cid}/register',headers=h).json()['record']
+        full['procedure']['cabinet']='Cabinet synthétique restauré';full['procedure']['cabinet_state']='known'
+        full['people'][0]['profession']='other';full['people'][0]['profession_other']='Profession synthétique restaurée'
+        assert c.put(f'/cases/{cid}/register',headers=h,json={'expected_version':2,'reason':'Contrôle du registre complet','record':full}).status_code==200
+        source_csv=b'rp_number,rp_year,date_rp,provenance,category,transnational\nSYNTH-SOURCE-ARCHIVE,2026,2026-04-01,Fictif,Fictif,Non\n'
+        source_preview=c.post('/registry/imports/preview',headers=h,files={'file':('synthetic.csv',source_csv)}).json()['preview_id']
+        source_batch=c.post('/registry/imports/'+source_preview+'/confirm',headers=h).json()['batch_id']
+        assert c.post(f'/cases/{cid}/submit?expected_version=3',headers=h).status_code==200
+        assert c.post(f'/cases/{cid}/validate?expected_version=4',headers=h).status_code==200
         before=c.get('/stats/legal',headers=h).json()
         content=b'rp_number,rp_year,date_rp,provenance,category,transnational\nSYNTH-RESTORED-IMPORT,2026,2026-03-01,Test fictif,Test fictif,Non\n'
         pid=c.post('/imports/preview',headers=h,files={'file':('synthetic.csv',content,'text/csv')}).json()['preview_id']
@@ -55,10 +62,12 @@ with TestClient(app) as c:
  assert c.get('/stats/legal',headers=h).json()==json.loads(os.environ['SISA_RESTORE_TEST_STATS'])
  assert c.get('/cases/1/legal',headers=h).json()['measures'][0]['amount']=='1200.50'
  assert c.post('/imports/'+os.environ['SISA_RESTORE_TEST_PREVIEW']+'/confirm',headers=h).json()['imported_rows']==1
- assert c.get('/cases',headers=h).json()['total']==2
+ assert c.get('/cases',headers=h).json()['total']==3
+ assert c.get('/cases/1/register',headers=h).json()['record']['procedure']['cabinet']=='Cabinet synthétique restauré'
+ assert c.get('/registry/imports/'+os.environ['SISA_RESTORE_SOURCE_BATCH']+'/source',headers=h).content.startswith(b'rp_number')
  print('Restored application: authentication, full legal record, identical indicators and pending import verified.')
 '''
-        result=subprocess.run([sys.executable,'-c',check],cwd=root,env={**os.environ,'SISA_DB_PATH':str(target),'SISA_RESTORE_TEST_HEADER':json.dumps(h),'SISA_RESTORE_TEST_STATS':json.dumps(before),'SISA_RESTORE_TEST_PREVIEW':pid},text=True,capture_output=True)
+        result=subprocess.run([sys.executable,'-c',check],cwd=root,env={**os.environ,'SISA_DB_PATH':str(target),'SISA_RESTORE_TEST_HEADER':json.dumps(h),'SISA_RESTORE_TEST_STATS':json.dumps(before),'SISA_RESTORE_TEST_PREVIEW':pid,'SISA_RESTORE_SOURCE_BATCH':source_batch},text=True,capture_output=True)
         if result.returncode:raise RuntimeError(result.stderr)
         print(result.stdout.strip())
         print(f'SQLite snapshot restored into a new database; {len(tables)} tables compared completely; integrity and foreign keys valid.')

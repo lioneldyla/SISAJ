@@ -1,8 +1,16 @@
-# SISAJ v0.4 — contenu juridique, indicateurs et démonstration
+# SISAJ v0.5 — registre PPEF complet et pilotage
 
 Système de gestion et d’analyse PPEF : interface française responsive, API FastAPI et stockage PostgreSQL sur Render. Évolution du socle v0.2 hybride fourni, conservant les parcours métier existants et le mode local SQLite.
 
 **Version de démonstration, données synthétiques uniquement. Aucun hébergement de données judiciaires réelles n’est autorisé par cette livraison.** Les indicateurs restent provisoires. Les modules officiels complets, la recette institutionnelle et la revue indépendante restent à réaliser.
+
+## Évolution v0.5 du 25 octobre 2026
+
+Reprise des 31 variables et des colonnes complémentaires du classeur PPEF : saisie en six sections, procédures/audiences, personnes détaillées, décisions/peines et biens/valeurs. Import multi-feuilles contrôlé, couverture de colonnes, original complet et lignes sources conservés, blocage des ambiguïtés et des pertes silencieuses. Six états de pilotage, rapports PDF/Excel, réversibilité et prévisions de flux uniquement lorsque l’historique le permet.
+
+[Bilan et limites v0.5](docs/validation_v05.md) · [Correspondances du classeur](docs/ppef_column_mapping.json) · [Planche visuelle](docs/planche_visuelle.html).
+
+**La v0.5 a passé les contrôles SQLite, navigateur et PostgreSQL 16/18. La sauvegarde réelle v0.4 a été restaurée et comparée dans une base Render isolée avant mise en ligne.** Voir les preuves dans `docs/evidence/v05/`. Aucun import du fichier joint sur le site.
 
 ## Évolution v0.4 du 25 octobre 2026
 
@@ -34,7 +42,7 @@ La passerelle historique `cloud_aggregates/` est conservée séparément. Elle n
 
 Suivre [le guide Render](deploy/RENDER.md). Le fichier [render.yaml](render.yaml) déclare un service web et une base PostgreSQL privée, dans la même région. `/ready` vérifie la base. Aucun stockage de dossiers ne repose sur le disque éphémère du service web. Il n’y a pas de mot de passe administrateur par défaut.
 
-**Démonstration v0.4 déployée et disponibilité PostgreSQL/HTTPS vérifiée : https://sisa-platform-demo.onrender.com/ . Le premier administrateur reste à initialiser ; la recette authentifiée et la restauration de la base Render restent à achever.** Les ressources sont payantes selon les plans choisis ; contrôler tarifs, région et disponibilité dans Render avant création.
+**Démonstration : https://sisa-platform-demo.onrender.com/ . Le premier administrateur est initialisé. La sauvegarde réelle et la disponibilité sont suivies dans le bilan v0.5 ; la recette institutionnelle reste à réaliser.** Les ressources sont payantes selon les plans choisis ; contrôler tarifs, région et disponibilité dans Render avant création.
 
 ## Développement local synthétique
 

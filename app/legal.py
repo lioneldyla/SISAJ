@@ -121,6 +121,14 @@ def legal_snapshot(c,case_id):
 
 
 def calculate(c,start=None,end=None,jurisdiction=None):
+    if c.execute('SELECT case_id FROM registry_records LIMIT 1').fetchone():
+        from .registry import operational
+        from collections import defaultdict
+        result=operational(c,start,end,jurisdiction=jurisdiction);counts=result['counts'];amounts=defaultdict(Decimal)
+        for item in result['financial']:
+            if item['kind'] in ('fine','seizure','confiscation'):amounts[(item['kind'],item['currency'])]+=Decimal(item['amount'])
+        return {'method_version':result['method_version'],'officially_approved':False,'period':{'start':str(start) if start else None,'end':str(end) if end else None},'jurisdiction_code':jurisdiction,'population':result['population'],'received_cases':counts.get('received',0),'judged_cases':counts.get('judged_cases',0),'decisions':counts.get('decisions',0),'merits_decisions':counts.get('merits_decisions',0),'conviction_decisions':counts.get('conviction_decisions',0),'acquittal_decisions':counts.get('acquittal_decisions',0),'mixed_decisions':counts.get('mixed_decisions',0),'unknown_outcome_decisions':counts.get('unknown_outcome_decisions',0),'measures':sum(counts.get(k+'_measures',0) for k in ('fine','seizure','confiscation')),'unknown_amount_measures':sum(result['quality']['missing'].get(k+'_amount',0) for k in ('fine','seizure','confiscation')),'amounts':[{'kind':k[0],'currency':k[1],'amount':str(v)} for k,v in sorted(amounts.items())],'date_basis':{'received_cases':'date_rp','decisions':'decision_date','measures':'measure_date'},'warning':'Méthode provisoire ; montants distincts par devise. Consulter les six états pour les bases de valorisation.'}
+
     if start and end and start>end: raise HTTPException(422,'Période invalide.')
     args=[]; wh="c.status='validated'"
     if jurisdiction:
@@ -183,6 +191,8 @@ def install_legal(app,db,locked_case,audit,utcnow,user_from_token,require_roles,
     def save_legal(case_id:int,x:LegalIn,u=Depends(require_roles('admin','collector','supervisor'))):
         with db(write=True) as c:
             row=locked_case(c,case_id,x.expected_version)
+            if c.execute('SELECT case_id FROM registry_records WHERE case_id=?',(case_id,)).fetchone():
+                raise HTTPException(409,'Ce dossier utilise le registre complet ; modifier /cases/{id}/register pour préserver tous ses champs.')
             if row['status'] not in ('draft','returned'):
                 raise HTTPException(409,'Remettre le dossier en brouillon par une correction motivée avant de modifier son contenu juridique.')
             if x.jurisdiction_code and not c.execute('SELECT code FROM jurisdictions WHERE code=?',(x.jurisdiction_code,)).fetchone():
@@ -235,7 +245,7 @@ def install_legal(app,db,locked_case,audit,utcnow,user_from_token,require_roles,
         amounts=wb.create_sheet('Montants');amounts.append(['Nature','Devise','Montant exact (texte)'])
         for r in result['amounts']:amounts.append([r['kind'],r['currency'],r['amount']])
         meta=wb.create_sheet('Méthode')
-        for key,val in [('Méthode',METHOD),('Approbation officielle','Non'),('Début',str(start or 'Toutes dates')),('Fin',str(end or 'Toutes dates')),('Juridiction',jurisdiction or 'Toutes'),('Population',result['population']),('Avertissement',result['warning']),('Dates',json.dumps(result['date_basis'],ensure_ascii=False)),('Auteur',u['username']),('UTC',utcnow())]:meta.append([key,safe_cell(val)])
+        for key,val in [('Méthode',result['method_version']),('Approbation officielle','Non'),('Début',str(start or 'Toutes dates')),('Fin',str(end or 'Toutes dates')),('Juridiction',jurisdiction or 'Toutes'),('Population',result['population']),('Avertissement',result['warning']),('Dates',json.dumps(result['date_basis'],ensure_ascii=False)),('Auteur',u['username']),('UTC',utcnow())]:meta.append([key,safe_cell(val)])
         buf=BytesIO();wb.save(buf);buf.seek(0)
         return StreamingResponse(buf,media_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',headers={'Content-Disposition':'attachment; filename="sisa_indicateurs.xlsx"'})
 
@@ -247,7 +257,7 @@ def install_legal(app,db,locked_case,audit,utcnow,user_from_token,require_roles,
             result=calculate(c,start,end,jurisdiction)
             audit(c,u['id'],'export','legal_report',detail={'format':'pdf','method':METHOD,'start':start,'end':end,'jurisdiction':jurisdiction})
         buf=BytesIO();pdf=canvas.Canvas(buf);pdf.setTitle('SISA - Indicateurs juridiques provisoires');y=790
-        lines=['SISA - Rapport juridique de démonstration',METHOD,'Non approuvé institutionnellement',f"Période : {start or 'Toutes dates'} / {end or 'Toutes dates'}",f"Juridiction : {jurisdiction or 'Toutes'}",'Population : dossiers validés uniquement',f"Auteur : {u['username']} | UTC : {utcnow()}"]
+        lines=['SISA - Rapport juridique de démonstration',result['method_version'],'Non approuvé institutionnellement',f"Période : {start or 'Toutes dates'} / {end or 'Toutes dates'}",f"Juridiction : {jurisdiction or 'Toutes'}",'Population : dossiers validés uniquement',f"Auteur : {u['username']} | UTC : {utcnow()}"]
         lines += [f'{k} : {result[k]}' for k in ('received_cases','judged_cases','merits_decisions','conviction_decisions','acquittal_decisions','mixed_decisions','unknown_outcome_decisions','unknown_amount_measures')]
         lines += [f"{r['kind']} : {r['amount']} {r['currency']}" for r in result['amounts']]
         lines += [json.dumps(result['date_basis'],ensure_ascii=False),result['warning']]
