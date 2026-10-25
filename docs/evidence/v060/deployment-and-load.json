@@ -1,0 +1,52 @@
+{
+  "version": "0.6.0",
+  "url": "https://sisa-platform-demo.onrender.com/",
+  "commit": "8f880d2ee2b2ec59c64662d2bb0418b14d17d504",
+  "pull_request": "https://github.com/lioneldyla/SISAJ/pull/4",
+  "render_deploy_id": "dep-dbf04khsrm7s73euvjp0",
+  "render_status": "Deploy succeeded|Live",
+  "backup_receipt": "sisa_pre_transfer_20261025_121331",
+  "backup_tables_verified": 21,
+  "tests": {
+    "local_backend": 81,
+    "ci_sqlite_browser_restore": "success",
+    "ci_postgresql_16": "success",
+    "ci_postgresql_18": "success"
+  },
+  "loaded": {
+    "batch_id": "83c8816b-9639-4e6c-a24e-1842fc096dc3",
+    "cases": 1500,
+    "people": 3864,
+    "decisions": 1500,
+    "measures": 3500,
+    "status": "draft",
+    "officially_approved": false
+  },
+  "independent_workbook_oracle": {
+    "success": true,
+    "physical_people": 3010,
+    "legal_people": 854,
+    "median_days": 148,
+    "conviction_only_decisions": 651,
+    "acquittal_only_decisions": 500,
+    "mixed_decisions": 349,
+    "seizure_xof": "14765326340000.00",
+    "confiscation_xof": "5794899983700.00",
+    "fine_xof": "244397000000.00",
+    "alleged_xof": "37361870000000.00",
+    "source_jsonl_byte_exact": true,
+    "reference_document_checksums_verified": true
+  },
+  "reversal_preview_verified_at_load": true,
+  "source_private_package_sha256": "b8c58346f727756caa38cd18f842c8782e082f228f5f43245646cc2830f59d61",
+  "live_interactive_check": {
+    "cabinet_1_cases": 169,
+    "download_completion": "not_confirmed_due_to_browser_timeout_and_subsequent_session_expiry",
+    "relogin_required": true
+  },
+  "limitations": [
+    "Missing orientation dates preserved; all 1500 cases retain a quality alert and were not forced through validation.",
+    "Final judicial stock, exhaustive future hearing calendar and confiscation execution are not established by the supplied data.",
+    "UI reset to general view was not completed after the session expired."
+  ]
+}
