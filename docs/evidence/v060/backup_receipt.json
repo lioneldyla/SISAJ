@@ -1,0 +1,9 @@
+{
+  "target_database": "sisa_pre_transfer_20261025_121331",
+  "backup_server": "dpg-dbeqoeom7kps73eovnqg-a",
+  "source_read_only": true,
+  "tables_verified": 21,
+  "committed_restore_verified": true,
+  "sequences_verified": true,
+  "verified_via_service_shell": true
+}
