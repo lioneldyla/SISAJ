@@ -16,7 +16,7 @@ CREATE TABLE IF NOT EXISTS registry_batches(id TEXT PRIMARY KEY, user_id INTEGER
 CREATE TABLE IF NOT EXISTS registry_source_rows(id TEXT PRIMARY KEY, batch_id TEXT NOT NULL REFERENCES registry_batches(id), case_id INTEGER NOT NULL REFERENCES cases(id), sheet TEXT NOT NULL, row_number INTEGER NOT NULL, payload TEXT NOT NULL);
 CREATE INDEX IF NOT EXISTS idx_registry_source_case ON registry_source_rows(case_id);
 '''
-METHOD='ppef-register-v0.5-draft'
+METHOD='ppef-register-v0.7-provisional'
 
 def read_record(c,case):
  r=c.execute('SELECT payload FROM registry_records WHERE case_id=?',(case['id'],)).fetchone()
@@ -26,7 +26,7 @@ def read_record(c,case):
  return Register.model_validate({'jurisdiction_code':old['jurisdiction_code'],'ri_state':'assigned' if case['ri_number'] else 'not_recorded','transnational_state':'yes' if case['transnational'] else 'no',
  'people':old['people'],
  'offences':[{'reference':o['reference'],'parquet_label':o['label']} for o in old['offences']],
- 'decisions':[{'reference':d['reference'],'number':d['reference'],'decision_date':d['decision_date'],'nature':'merits' if d['on_merits'] else 'not_merits','result':'not_recorded','outcomes':d['outcomes']} for d in old['decisions']],
+ 'decisions':[{'reference':d['reference'],'number':d['reference'],'decision_date':d['decision_date'],'nature':'merits' if d['on_merits'] else 'not_merits','result':{frozenset({'conviction'}):'conviction',frozenset({'acquittal'}):'acquittal',frozenset({'conviction','acquittal'}):'mixed'}.get(frozenset(o['result'] for o in d['outcomes']),'not_recorded'),'outcomes':d['outcomes']} for d in old['decisions']],
  'measures':[{'reference':m['reference'],'kind':m['kind'],'decision_reference':m['decision_reference'],'measure_date':m['measure_date'],'amount':{'state':'known' if m['amount'] is not None else 'not_recorded','value':m['amount'],'currency':m['currency'] or 'XOF'}} for m in old['measures']]})
 
 def write_record(c,cid,r,now,user):
@@ -145,7 +145,7 @@ def operational(c,start=None,end=None,as_of=None,cabinet=None,category=None,prov
    values=[v for _,v in series];predictions=[mean(values[i-6:i]) for i in range(len(values)-6,len(values))]
    mae=mean(abs(pred-values[len(values)-6+i]) for i,pred in enumerate(predictions));future=mean(values[-6:])
    forecast={'available':True,'method':'Moyenne mobile 6 mois ; base descriptive, non IA','history_months':len(series),'backtest_months':6,'mae':round(mae,2),'monthly_estimate_next_3_months':round(future,2),'warning':'Scénario indicatif sans intervalle calibré ; historique antérieur à la date d’observation, indépendamment de la période des flux ; mois incomplet exclu ; aucune estimation individuelle de culpabilité ou de durée.'}
- return {'method_version':METHOD,'officially_approved':False,'period':{'start':str(start) if start else None,'end':str(end) if end else None,'as_of':str(as_of)},'population':'Dossiers validés uniquement','counts':dict(counts),'stock':{'count':len(stocks),'items':stocks[:500],'total':len(stocks)},'by_category':dist(cats),'by_provenance':dist(units),'by_cabinet':dist(cabinets),'by_offence_group':dist(groups),'monthly':{'entries':dist(entries),'exits':dist(exits)},'persons':{'enumerated':dict(persons),'declared':dict(declared),'count_basis':dict(basis),'sex_convicted_outcomes':dict(sex),'nationalities_convicted_outcomes':dist(nationality),'unit':'Personne dans son dossier ; aucune déduplication inter-dossiers ni entre décisions'},'delays':{k:{'n':len(v),'mean_days':round(mean(v),2),'median_days':median(v)} for k,v in delays.items()},'financial':[{'kind':k[0],'currency':k[1],'basis':k[2],'amount':format(v,'f')} for k,v in sorted(amounts.items())],'sentence_months':{'min':min(sentences) if sentences else None,'max':max(sentences) if sentences else None},'fine_ranges':[{'currency':k,'min':str(min(v)),'max':str(max(v))} for k,v in fine_values.items()],'quality':{'issues':issues[:500],'total_issues':len(issues),'missing':dict(missing),'complete':complete,'expected':expected,'completeness_percent':round(100*complete/expected,2) if expected else None,'denominator':'5 champs de réception + référence/date de chaque décision rendue + date de chaque mesure'},'throughput_percent':round(100*counts['closed']/counts['received'],2) if counts['received'] else None,'forecast':forecast,'warnings':['Taux sorties/entrées distinct du taux de résolution d’une cohorte.','Dates : réception par Date RP ; clôtures par date de clôture ; décisions par date de décision ; mesures par date propre.','Sommes séparées par nature, devise et méthode de valorisation. Les inconnus ne sont pas des zéros.','Nomenclatures proposées, à valider par la juridiction.']}
+ return {'method_version':METHOD,'officially_approved':False,'period':{'start':str(start) if start else None,'end':str(end) if end else None,'as_of':str(as_of)},'population':'Dossiers validés uniquement','counts':dict(counts),'stock':{'available':False,'count':None,'items':[],'total':None,'reason':'Terminaison judiciaire et historique non validés ; clôture d’instruction distincte.'},'instruction_stock':{'count':len(stocks),'items':stocks[:500],'total':len(stocks),'definition':'Dossiers sans clôture d’instruction enregistrée à la date d’observation ; ne constitue pas un stock judiciaire final.'},'by_category':dist(cats),'by_provenance':dist(units),'by_cabinet':dist(cabinets),'by_offence_group':dist(groups),'monthly':{'entries':dist(entries),'exits':dist(exits)},'persons':{'enumerated':dict(persons),'declared':dict(declared),'count_basis':dict(basis),'sex_convicted_outcomes':dict(sex),'nationalities_convicted_outcomes':dist(nationality),'unit':'Personne dans son dossier ; aucune déduplication inter-dossiers ni entre décisions'},'delays':{k:{'n':len(v),'mean_days':round(mean(v),2),'median_days':median(v)} for k,v in delays.items()},'financial':[{'kind':k[0],'currency':k[1],'basis':k[2],'amount':format(v,'f')} for k,v in sorted(amounts.items())],'sentence_months':{'min':min(sentences) if sentences else None,'max':max(sentences) if sentences else None},'fine_ranges':[{'currency':k,'min':str(min(v)),'max':str(max(v))} for k,v in fine_values.items()],'quality':{'issues':issues[:500],'total_issues':len(issues),'missing':dict(missing),'complete':complete,'expected':expected,'completeness_percent':round(100*complete/expected,2) if expected else None,'denominator':'5 champs de réception + référence/date de chaque décision rendue + date de chaque mesure'},'throughput_percent':None,'instruction_throughput_percent':round(100*counts['closed']/counts['received'],2) if counts['received'] else None,'closure_scope':'instruction','forecast':forecast,'warnings':['Clôtures et stock d’instruction distincts des sorties et du stock judiciaires. Aucun taux de résolution judiciaire calculable.','Dates : réception par Date RP ; clôtures par date de clôture ; décisions par date de décision ; mesures par date propre.','Sommes séparées par nature, devise et méthode de valorisation. Les inconnus ne sont pas des zéros.','Nomenclatures proposées, à valider par la juridiction.']}
 
 
 def install(app,db,locked_case,audit,utcnow,user_from_token,require_roles,safe_cell):
@@ -238,7 +238,7 @@ def install(app,db,locked_case,audit,utcnow,user_from_token,require_roles,safe_c
    cases=[dict(r) for r in c.execute('SELECT * FROM cases ORDER BY id').fetchall()]
    output=[{'case':r,'record':read_record(c,r).model_dump(mode='json')} for r in cases]
    audit(c,u['id'],'export','complete_registry',detail={'records':len(output)})
-  return StreamingResponse(io.BytesIO(json.dumps({'schema_version':METHOD,'records':output},ensure_ascii=False).encode()),media_type='application/json',headers={'Content-Disposition':'attachment; filename="registre_complet.json"'})
+  return StreamingResponse(io.BytesIO(json.dumps({'schema_version':METHOD,'dataset_kind':'synthetic','officially_approved':False,'records':output},ensure_ascii=False).encode()),media_type='application/json',headers={'Content-Disposition':'attachment; filename="registre_complet.json"'})
  @app.get('/registry/reports/{format}')
  def report(format:str,start:date|None=None,end:date|None=None,as_of:date|None=None,cabinet:str|None=None,category:str|None=None,provenance:str|None=None,waiting_days:int=90,u=Depends(require_roles('admin','supervisor'))):
   if format not in ('xlsx','pdf'):raise HTTPException(404,'Format indisponible')
@@ -248,8 +248,8 @@ def install(app,db,locked_case,audit,utcnow,user_from_token,require_roles,safe_c
   if format=='xlsx':
    from openpyxl import Workbook
    w=Workbook();s=w.active;s.title='Activité';s.append(['Indicateur','Valeur'])
-   for k,v in result['counts'].items():s.append([k,v])
-   s.append(['Stock à la date d’observation',result['stock']['count']]);s.append(['Taux sorties / entrées',result['throughput_percent']])
+   for k,v in result['counts'].items():s.append(['Clôtures d’instruction enregistrées' if k=='closed' else k,v])
+   s.append(['Stock judiciaire final','Non calculable']);s.append(['Dossiers sans clôture d’instruction enregistrée',result['instruction_stock']['count']]);s.append(['Clôtures d’instruction / réceptions (%)',result['instruction_throughput_percent']])
    for title,key in [('Contentieux','by_category'),('Charge','by_cabinet')]:
     s=w.create_sheet(title);s.append(['Libellé','Nombre'])
     for r in result[key]:s.append([safe_cell(r['label']),r['count']])
@@ -260,7 +260,7 @@ def install(app,db,locked_case,audit,utcnow,user_from_token,require_roles,safe_c
    s=w.create_sheet('Qualité');s.append(['Dossier','Code','Observation'])
    for r in result['quality']['issues']:s.append([r['case_id'],r['code'],safe_cell(r['message'])])
    s=w.create_sheet('Méthode')
-   for pair in [('Version',METHOD),('Période',str(result['period'])),('Filtres',str({'cabinet':cabinet,'category':category,'provenance':provenance})),('Population',result['population']),('Complétude',result['quality']['denominator']),('Prévision',str(result['forecast'])),('Avertissements',' '.join(result['warnings']))]:s.append([pair[0],safe_cell(pair[1])])
+   for pair in [('Données','Fictives / test ; méthode non approuvée'),('Version',METHOD),('Période',str(result['period'])),('Filtres',str({'cabinet':cabinet,'category':category,'provenance':provenance})),('Population',result['population']),('Complétude',result['quality']['denominator']),('Prévision',str(result['forecast'])),('Avertissements',' '.join(result['warnings']))]:s.append([pair[0],safe_cell(pair[1])])
    for s in w:
     s.freeze_panes='A2';s.auto_filter.ref=s.dimensions
     for col in s.columns:s.column_dimensions[col[0].column_letter].width=min(70,max(18,max(len(str(c.value or '')) for c in col)+2))
@@ -297,10 +297,10 @@ def install(app,db,locked_case,audit,utcnow,user_from_token,require_roles,safe_c
     else:story.extend(section_heading+[table])
    story.append(paragraph('Période : '+str(result['period']['start'] or 'toutes dates')+' au '+str(result['period']['end'] or 'toutes dates')+' · Observation : '+result['period']['as_of']))
    story.append(paragraph('Cabinet : '+(cabinet or 'tous')+' · Provenance : '+(provenance or 'toutes')+' · Catégorie : '+(category or 'toutes')))
-   labels={'received':'Dossiers reçus','closed':'Dossiers clôturés','judged_cases':'Dossiers jugés','merits_decisions':'Décisions au fond','convicted_cases':'Dossiers avec condamnation','acquitted_cases':'Dossiers avec relaxe','mixed_decisions':'Décisions mixtes'}
-   section('1. Activité générale',['Indicateur','Valeur'],[[v,result['counts'].get(k,0)] for k,v in labels.items()]+[['Stock à la date d’observation',result['stock']['count']],['Sorties / entrées (%)',result['throughput_percent']]])
+   labels={'received':'Dossiers reçus','closed':'Clôtures d’instruction enregistrées','judged_cases':'Dossiers jugés','merits_decisions':'Décisions au fond','convicted_cases':'Dossiers avec condamnation','acquitted_cases':'Dossiers avec relaxe','mixed_decisions':'Décisions mixtes'}
+   section('1. Activité générale',['Indicateur','Valeur'],[[v,result['counts'].get(k,0)] for k,v in labels.items()]+[['Stock judiciaire final','Non calculable'],['Sans clôture d’instruction enregistrée',result['instruction_stock']['count']],['Clôtures d’instruction / réceptions (%)',result['instruction_throughput_percent']]])
    section('2. Répartition du contentieux',['Qualification source','Dossiers reçus'],[[r['label'],r['count']] for r in result['by_category']])
-   section('3. Délais et attentes',['Intervalle','Nombre','Moyenne (jours)','Médiane (jours)'],[[{'receipt_to_closure':'Réception / clôture','receipt_to_hearing':'Réception / audience tenue','receipt_to_decision':'Réception / décision'}.get(k,k),v['n'],v['mean_days'],v['median_days']] for k,v in result['delays'].items()])
+   section('3. Délais et attentes',['Intervalle','Nombre','Moyenne (jours)','Médiane (jours)'],[[{'receipt_to_closure':'Réception / clôture d’instruction','receipt_to_hearing':'Réception / audience tenue','receipt_to_decision':'Réception / décision'}.get(k,k),v['n'],v['mean_days'],v['median_days']] for k,v in result['delays'].items()])
    section('4. Charge par cabinet',['Cabinet','Dossiers reçus'],[[r['label'],r['count']] for r in result['by_cabinet']])
    section('5. Biens et montants',['Nature','Devise','Base de valorisation','Montant exact'],[[{'offence':'Infractions','fine':'Amendes','seizure':'Saisies','confiscation':'Confiscations','compensation':'Réparations'}.get(r['kind'],r['kind']),r['currency'],CATALOGUES['valuation_basis'].get(r['basis'],r['basis']),r['amount']] for r in result['financial']])
    section('6. Qualité des données',['Indicateur','Valeur'],[['Points à examiner',result['quality']['total_issues']],['Champs renseignés',result['quality']['complete']],['Champs attendus',result['quality']['expected']],['Complétude (%)',result['quality']['completeness_percent']]])
@@ -322,13 +322,13 @@ def install(app,db,locked_case,audit,utcnow,user_from_token,require_roles,safe_c
     elif isinstance(v,list):output[prefix+k]=json.dumps(v,ensure_ascii=False)
     else:output[prefix+k]=v
    return output
-  tables={k:[] for k in ('Dossiers','Personnes','Infractions','Décisions','Peines','Mesures','Résultats')}
+  tables={k:[] for k in ('Dossiers','Personnes','Infractions','Décisions','Peines','Mesures','Résultats','Audiences')}
   with db(write=True) as c:
    for case in c.execute('SELECT * FROM cases ORDER BY id').fetchall():
     case=dict(case);r=read_record(c,case).model_dump(mode='json')
-    base={k:v for k,v in r.items() if k not in ('people','offences','decisions','sentences','measures')}
+    base={k:v for k,v in r.items() if k not in ('people','offences','decisions','sentences','measures','hearings')}
     tables['Dossiers'].append(flatten({**case,**base}))
-    for key,title in [('people','Personnes'),('offences','Infractions'),('decisions','Décisions'),('sentences','Peines'),('measures','Mesures')]:
+    for key,title in [('people','Personnes'),('offences','Infractions'),('decisions','Décisions'),('sentences','Peines'),('measures','Mesures'),('hearings','Audiences')]:
      for row in r[key]:
       row=dict(row);outcomes=row.pop('outcomes',[])
       tables[title].append({'case_id':case['id'],**flatten(row)})
@@ -341,7 +341,7 @@ def install(app,db,locked_case,audit,utcnow,user_from_token,require_roles,safe_c
    for row in rows:ws.append([safe_cell(row.get(k)) for k in keys])
    ws.freeze_panes='A2';ws.auto_filter.ref=ws.dimensions
    for col in ws.columns:ws.column_dimensions[col[0].column_letter].width=24
-  meta=w.create_sheet('Méthode');meta.append(['Version',METHOD]);meta.append(['Population','Tous les dossiers, tous statuts et toutes dates'])
+  meta=w.create_sheet('Méthode');meta.append(['Version',METHOD]);meta.append(['Population','Tous les dossiers, tous statuts et toutes dates']);meta.append(['Données','Fictives / test ; méthode non approuvée'])
   meta.append(['Relations','case_id rattache les détails au dossier ; références locales par personne, décision et mesure'])
   meta.append(['Conservation','Original Excel complet disponible depuis le lot d’import ; aucun calcul Excel n’est assimilé à une donnée source'])
   meta.append(['Montants','Décimaux exacts en texte ; états inconnus séparés de zéro ; bases de valorisation et devises conservées'])

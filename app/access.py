@@ -53,7 +53,7 @@ def install(app,db,audit,utcnow,require_roles):
             if p and p['profile']!='technical':
                 scoped=bool(p['cabinets'] or p['jurisdictions']) or p['profile'] in ('cabinet','clerk')
                 global_path=path.startswith(('/stats','/reports','/exports','/registry/export','/registry/records','/registry/reports','/registry/statements','/imports','/registry/imports','/registry/batches','/registry/documents','/audit','/intelligence','/admin')) or path=='/dashboard'
-                if scoped and global_path:return JSONResponse({'detail':'Vue globale indisponible ; utiliser le tableau de bord et son export filtré.'},status_code=403)
+                if scoped and (global_path or path.startswith('/compliance')):return JSONResponse({'detail':'Vue globale indisponible ; utiliser le tableau de bord et son export filtré.'},status_code=403)
                 if p['profile'] in ('direction','statistician') and request.method not in ('GET','HEAD','OPTIONS') and not path.startswith('/auth/'):
                     return JSONResponse({'detail':'Profil de consultation uniquement.'},status_code=403)
                 if scoped and request.method=='POST' and path=='/cases':return JSONResponse({'detail':'Affectation initiale d’un nouveau dossier par le responsable global requise.'},status_code=403)

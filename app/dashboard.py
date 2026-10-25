@@ -22,7 +22,7 @@ def analyze(c,u,start=None,end=None,as_of=None,date_basis='receipt',cabinet=None
     as_of=as_of or end or date.today()
     if start and start>as_of:raise HTTPException(422,'Observation antérieure au début de période')
     def period(x):return bool(x and (not start or str(x)>=str(start)) and (not end or str(x)<=str(end)) and str(x)<=str(as_of))
-    items=[];groups=defaultdict(set);cats=defaultdict(set);monthly=defaultdict(lambda:Counter());results=defaultdict(set);financial=defaultdict(Decimal);financial_missing=Counter();money_ids=defaultdict(set);alerts=[];professions=Counter();activities=Counter();person_results=Counter();delays=[];options=defaultdict(set);cabinets=defaultdict(Counter);decision_count=0;cabinet_options=set()
+    items=[];groups=defaultdict(set);cats=defaultdict(set);monthly=defaultdict(lambda:Counter());results=defaultdict(set);financial=defaultdict(Decimal);financial_missing=Counter();money_ids=defaultdict(set);alerts=[];professions=Counter();activities=Counter();person_results=Counter();delays=[];options=defaultdict(set);cabinets=defaultdict(Counter);decision_count=0;cabinet_options=set();quality_codes=defaultdict(set);hearing_counts=Counter()
     for row in c.execute('SELECT * FROM cases ORDER BY id').fetchall():
         case=dict(row);r=read_record(c,case);p=r.procedure;cid=case['id'];received=date.fromisoformat(case['date_rp'])
         from .access import permitted
@@ -31,7 +31,7 @@ def analyze(c,u,start=None,end=None,as_of=None,date_basis='receipt',cabinet=None
         if status!='all' and case['status']!=status:continue
         if jurisdiction and r.jurisdiction_code!=jurisdiction:continue
         if received>as_of:continue
-        dates={'receipt':[received],'closure':[p.closure_date],'hearing':[p.first_hearing_held],'decision':[d.decision_date for d in r.decisions]}
+        dates={'receipt':[received],'closure':[p.closure_date],'hearing':[p.first_hearing_held,*[h.held_date for h in r.hearings]],'decision':[d.decision_date for d in r.decisions]}
         if not any(period(x) for x in dates[date_basis]):continue
         cabinet_options.add(p.cabinet or 'Non affecté')
         if cabinet and (p.cabinet or 'Non affecté') not in cabinet:continue
@@ -55,9 +55,15 @@ def analyze(c,u,start=None,end=None,as_of=None,date_basis='receipt',cabinet=None
         if pp is not None and pm is not None:groups['persons'].add(cid)
         case_delays=[];events=[(str(received),'Réception RP')]
         if p.closure_date and p.closure_date<=as_of:events.append((str(p.closure_date),'Clôture de l’instruction'))
-        if p.first_hearing_held and p.first_hearing_held<=as_of:events.append((str(p.first_hearing_held),'Audience tenue'))
+        if p.first_hearing_held and p.first_hearing_held<=as_of and not any(h.held_date==p.first_hearing_held for h in r.hearings):events.append((str(p.first_hearing_held),'Audience tenue'))
         future=[]
         if p.first_hearing_planned and p.first_hearing_planned>=as_of:future.append((str(p.first_hearing_planned),'Audience prévue'))
+        for h in r.hearings:
+            when=h.held_date or h.planned_date
+            if period(when):hearing_counts[h.status]+=1
+            if h.held_date and h.held_date<=as_of:events.append((str(h.held_date),'Audience '+{'held':'tenue','adjourned':'renvoyée'}.get(h.status,h.status)))
+            if h.status=='planned' and h.planned_date and h.planned_date>=as_of:future.append((str(h.planned_date),'Audience prévue'))
+            if h.status=='adjourned' and h.next_date and h.next_date>=as_of:future.append((str(h.next_date),'Renvoi enregistré'))
         for d in r.decisions:
             if d.decision_date and d.decision_date<=as_of:events.append((str(d.decision_date),'Décision '+(d.number or d.reference)))
             if not period(d.decision_date):continue
@@ -88,6 +94,7 @@ def analyze(c,u,start=None,end=None,as_of=None,date_basis='receipt',cabinet=None
             else:financial_missing['alleged']+=1
         issues=quality(r,case)
         if issues:groups['quality'].add(cid)
+        for issue in issues:quality_codes[issue['code']].add(cid)
         for issue in issues:alerts.append({'id':cid,'rp':case['rp_number'],'type':'quality','reason':issue['message'],'action':'Compléter et vérifier la pièce source','responsible':p.cabinet or None})
         age=(as_of-received).days
         last=max(events)[0]
@@ -111,7 +118,7 @@ def analyze(c,u,start=None,end=None,as_of=None,date_basis='receipt',cabinet=None
     filtered=[x for x in items if not metric or x['id'] in groups[metric]]
     filtered.sort(key=lambda x:(x.get(sort) is None,str(x.get(sort) or '')),reverse=direction=='desc')
     params={'start':str(start) if start else None,'end':str(end) if end else None,'as_of':str(as_of),'date_basis':date_basis,'cabinet':cabinet,'provenance':provenance,'category':category,'subtype':subtype,'party':party,'transnational':transnational,'status':status,'jurisdiction':jurisdiction,'waiting_days':waiting_days,'q':q,'metric':metric,'sort':sort,'direction':direction}
-    output={'generated_at':datetime.now(timezone.utc).isoformat(),'filters':params,'population':('Tous les statuts' if status=='all' else {'draft':'Brouillons','submitted':'Soumis','returned':'Retournés','validated':'Validés'}[status]),'officially_approved':False,'cards':cards,'persons':{'physical':sum(x['pp'] or 0 for x in items) if pp_known else None,'legal':sum(x['pm'] or 0 for x in items) if pm_known else None,'professions':dict(professions),'activities':dict(activities),'individual_outcomes':dict(person_results)},'monthly':[{'month':k,**v} for k,v in sorted(monthly.items())],'categories':[{'label':k,'count':len(v)} for k,v in sorted(cats.items(),key=lambda x:-len(x[1]))],'results':[{'key':k,'count':len(v),'unit':'décisions'} for k,v in results.items()],'financial':[{'kind':k,'currency':cur,'basis':b,'amount':str(v)} for (k,cur,b),v in sorted(financial.items())],'financial_missing':dict(financial_missing),'alerts':alerts[:200],'alerts_total':len(alerts),'rows':filtered[offset:offset+limit],'total':len(filtered),'cohort_size':len(items),'options':{k:sorted(v) for k,v in options.items()},'limits':['Les habilitations par profil, cabinet et juridiction sont appliquées côté serveur ; les comptes historiques sans profil conservent leur périmètre existant.','Calendrier exhaustif, renvois successifs et exécution des confiscations non disponibles.','Jeu enrichi : tous les dossiers suivent une instruction et une décision au fond ; autres parcours absents.','Les montants de bases de valorisation différentes sont détaillés séparément ; leur comparaison économique nécessite un périmètre validé.'],'delay_distribution':dict(Counter('0–30 jours' if x<=30 else '31–90 jours' if x<=90 else '91–180 jours' if x<=180 else 'Plus de 180 jours' for x in delays))}
+    output={'generated_at':datetime.now(timezone.utc).isoformat(),'filters':params,'population':('Tous les statuts' if status=='all' else {'draft':'Brouillons','submitted':'Soumis','returned':'Retournés','validated':'Validés'}[status]),'officially_approved':False,'cards':cards,'persons':{'physical':sum(x['pp'] or 0 for x in items) if pp_known else None,'legal':sum(x['pm'] or 0 for x in items) if pm_known else None,'professions':dict(professions),'activities':dict(activities),'individual_outcomes':dict(person_results)},'monthly':[{'month':k,**v} for k,v in sorted(monthly.items())],'categories':[{'label':k,'count':len(v)} for k,v in sorted(cats.items(),key=lambda x:-len(x[1]))],'results':[{'key':k,'count':len(v),'unit':'décisions'} for k,v in results.items()],'financial':[{'kind':k,'currency':cur,'basis':b,'amount':str(v)} for (k,cur,b),v in sorted(financial.items())],'financial_missing':dict(financial_missing),'alerts':alerts[:200],'alerts_total':len(alerts),'rows':filtered[offset:offset+limit],'total':len(filtered),'cohort_size':len(items),'options':{k:sorted(v) for k,v in options.items()},'limits':['Les habilitations par profil, cabinet et juridiction sont appliquées côté serveur ; les comptes historiques sans profil conservent leur périmètre existant.','Audiences successives disponibles si saisies ; calendrier non exhaustif et exécution des confiscations non établie.','Jeu enrichi : tous les dossiers suivent une instruction et une décision au fond ; autres parcours absents.','Les montants de bases de valorisation différentes sont détaillés séparément ; leur comparaison économique nécessite un périmètre validé.'],'delay_distribution':dict(Counter('0–30 jours' if x<=30 else '31–90 jours' if x<=90 else '91–180 jours' if x<=180 else 'Plus de 180 jours' for x in delays))}
 
 
     output['by_cabinet']=[{'label':k,**v} for k,v in sorted(cabinets.items())]
@@ -119,6 +126,8 @@ def analyze(c,u,start=None,end=None,as_of=None,date_basis='receipt',cabinet=None
     output['indicator_catalogue']=INDICATORS
     output['by_status']=[{'label':k,'count':v} for k,v in Counter(x['status'] for x in items).items()]
     output['dataset_kind']='synthetic'
+    output['quality_summary']=[{'code':k,'dossiers':len(v)} for k,v in sorted(quality_codes.items())]
+    output['hearing_summary']={'recorded_only':True,'by_status':dict(hearing_counts),'definition':'Audiences détaillées enregistrées, comptées à leur date tenue ou, à défaut, prévue. Première audience historique non ajoutée pour éviter les doublons.'}
     return output
 
 def install(app,db,audit,utcnow,user_from_token,require_roles,safe_cell):
@@ -133,7 +142,7 @@ def install(app,db,audit,utcnow,user_from_token,require_roles,safe_cell):
         with db(write=True) as c:
             data=analyze(c,u,**args);audit(c,u['id'],'export','dashboard',detail={'filters':data['filters'],'rows':data['total']})
         buf=io.StringIO();w=csv.writer(buf)
-        w.writerow(['SISAJ / État filtré']);w.writerow(['Génération UTC',data['generated_at']]);w.writerow(['Filtres',json.dumps(data['filters'],ensure_ascii=False)]);w.writerow(['Unités','FCFA pour XOF ; jours ; personnes dans leurs dossiers'])
+        w.writerow(['SISAJ / État filtré']);w.writerow(['Nature des données','Fictives / test ; méthode non approuvée']);w.writerow(['Génération UTC',data['generated_at']]);w.writerow(['Filtres',json.dumps(data['filters'],ensure_ascii=False)]);w.writerow(['Unités','FCFA pour XOF ; jours ; personnes dans leurs dossiers'])
         keys=list(data['rows'][0]) if data['rows'] else ['id','rp'];w.writerow(keys)
         for row in data['rows']:w.writerow([safe_cell(row.get(k)) for k in keys])
         return StreamingResponse(io.BytesIO(('\ufeff'+buf.getvalue()).encode()),media_type='text/csv',headers={'Content-Disposition':'attachment; filename="tableau_bord_filtre.csv"'})

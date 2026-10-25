@@ -1,0 +1,23 @@
+export function complianceUI({api,esc,heading,panel,readOnly}){
+ const labels={passed:'Essai concluant',failed:'À reprendre',pending:'À tester'};
+ async function render(){
+  const d=await api('/compliance');const tested=d.scenarios.filter(s=>s.latest).length,passed=d.scenarios.filter(s=>s.latest?.result==='passed').length;
+  return heading('Conformité et recette','Des exigences suivies, des essais documentés et des limites explicites.')+
+   `<div class="compliance-intro"><div><span class="eyebrow">RECETTE PROGRESSIVE</span><h2>Chaque résultat doit pouvoir être expliqué.</h2><p>Les observations ci-dessous concernent les données fictives. Elles ne constituent pas une validation institutionnelle du greffe.</p></div><div class="compliance-score"><strong>${passed} / ${d.scenarios.length}</strong><span>essais déclarés concluants</span><small>${tested} scénario(s) documenté(s)</small></div></div>`+
+   panel('Références métier',d.reference_status,`<div class="panel-body">${d.references.length?d.references.map(r=>`<p>${esc(r.filename)} <small>Empreinte : ${esc(r.sha256)}</small></p>`).join(''):'<p>Joindre le TDR et la charte dans Imports & documents. Leur présence seule ne vaut pas approbation des règles.</p>'}<ul>${d.limits.map(l=>`<li>${esc(l)}</li>`).join('')}</ul></div>`)+
+   `<div class="compliance-grid">${d.scenarios.map(s=>`<article class="scenario-card"><div class="scenario-head"><span class="badge ${s.latest?.result==='passed'?'validated':s.latest?.result==='failed'?'returned':'draft'}">${labels[s.latest?.result||'pending']}</span><small>${esc(s.code)}</small></div><h2>${esc(s.label)}</h2><p>${esc(s.expected)}</p>${s.latest?`<details><summary>Dernière observation</summary><dl><dt>Attendu</dt><dd>${esc(s.latest.expected)}</dd><dt>Observé</dt><dd>${esc(s.latest.observed)}</dd><dt>Preuve</dt><dd>${esc(s.latest.evidence)}</dd></dl><small>${esc(s.latest.username)} · ${esc(s.latest.created_at)}</small></details>`:'<p class="muted">Aucun résultat humain enregistré.</p>'}${readOnly()?'':`<button class="btn" data-review-scenario="${esc(s.code)}">Consigner un essai</button>`}</article>`).join('')}</div>`+
+   panel('Historique de recette','Les observations sont ajoutées sans écraser les précédentes.','<div id="review-history" class="panel-body"></div>');
+ }
+ async function mount(){
+  const d=await api('/compliance');
+  document.querySelectorAll('[data-review-scenario]').forEach(button=>button.onclick=()=>{
+   const s=d.scenarios.find(s=>s.code===button.dataset.reviewScenario);const area=button.closest('article');
+   if(area.querySelector('form'))return;
+   area.insertAdjacentHTML('beforeend',`<form class="scenario-form"><label>Résultat<select name="result"><option value="pending">À tester</option><option value="passed">Essai concluant</option><option value="failed">À reprendre</option></select></label><label>Résultat attendu<textarea name="expected" required minlength="10" maxlength="3000">${esc(s.expected)}</textarea></label><label>Résultat observé<textarea name="observed" required minlength="10" maxlength="3000"></textarea></label><label>Preuve / référence du test<textarea name="evidence" required minlength="10" maxlength="4000" placeholder="Jeu utilisé, étapes reproduites, référence de rapport ou test"></textarea></label><p>Enregistrement d’un essai fictif ; aucune approbation officielle.</p><button class="btn primary" type="submit">Enregistrer l’observation</button><p class="review-feedback" role="status"></p></form>`);
+   const form=area.querySelector('form');form.onsubmit=async e=>{e.preventDefault();const save=form.querySelector('[type=submit]');save.disabled=true;try{await api('/compliance/reviews',{method:'POST',body:{scenario:s.code,...Object.fromEntries(new FormData(form))}});document.querySelector('#main').innerHTML=await render();await mount();}catch(error){form.querySelector('.review-feedback').textContent=error.message;}finally{save.disabled=false;}};
+  });
+  const history=await api('/compliance/reviews');const node=document.querySelector('#review-history');if(!node)return;
+  node.innerHTML=history.items.length?`<div class="table-wrap"><table><thead><tr><th>Date UTC</th><th>Scénario</th><th>Résultat</th><th>Responsable</th><th>Preuve</th></tr></thead><tbody>${history.items.map(r=>`<tr><td>${esc(r.created_at)}</td><td>${esc(r.scenario)}</td><td>${labels[r.result]}</td><td>${esc(r.username)}</td><td>${esc(r.evidence)}</td></tr>`).join('')}</tbody></table></div>`:'<p>Aucune observation enregistrée. Les tests automatiques sont conservés dans leurs rapports et ne remplissent pas cette recette humaine.</p>';
+ }
+ return {render,mount};
+}
