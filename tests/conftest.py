@@ -32,5 +32,9 @@ def reset_test_database():
         c.executescript(LEGAL_SCHEMA)
         from app.registry import SCHEMA as REGISTRY_SCHEMA
         c.executescript(REGISTRY_SCHEMA)
+        from app.transfer import SCHEMA as TRANSFER_SCHEMA
+        c.executescript(TRANSFER_SCHEMA)
+        c.execute('DELETE FROM transfer_archives')
+        c.execute('DELETE FROM reference_documents')
         c.execute('DELETE FROM jurisdictions')
         c.execute("INSERT OR IGNORE INTO indicator_definitions VALUES ('received_cases','Dossiers reçus','dossier distinct','date RP','draft-v0.2',0)")
