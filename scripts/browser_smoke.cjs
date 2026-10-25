@@ -42,31 +42,31 @@ const root=path.resolve(__dirname,'..');
   await page.locator('[data-field="procedure.cabinet"]').fill('Cabinet synthétique');
   await page.locator('[data-registry-tab="people"]').click();
   await page.locator('[data-field="count_basis"]').selectOption('enumerated');
-  await page.getByRole('button',{name:'Ajouter — Personnes',exact:true}).click();
+  await page.getByRole('button',{name:'Ajouter Personnes',exact:true}).click();
   const person=page.locator('[data-group="people"]');
   await person.locator('[data-field="display_name"]').fill('Personne synthétique');
   await person.locator('[data-field="profession"]').selectOption('other');
   await person.locator('[data-field="profession_other"]').fill('Profession synthétique');
   await page.locator('[data-registry-tab="offences"]').click();
-  await page.getByRole('button',{name:'Ajouter — Infractions',exact:true}).click();
+  await page.getByRole('button',{name:'Ajouter Infractions',exact:true}).click();
   const offence=page.locator('[data-group="offences"]');
   await offence.locator('[data-field="parquet_label"]').fill('Qualification fictive Parquet');
   await offence.locator('[data-field="tribunal_label"]').fill('Qualification fictive tribunal');
   await page.locator('[data-registry-tab="decisions"]').click();
-  await page.getByRole('button',{name:'Ajouter — Décisions',exact:true}).click();
+  await page.getByRole('button',{name:'Ajouter Décisions',exact:true}).click();
   const decision=page.locator('[data-group="decisions"]');
   await decision.locator('[data-field="number"]').fill('DEC-SYNTH-001');
   await decision.locator('[data-field="decision_date"]').fill('2026-03-01');
   await decision.locator('[data-field="nature"]').selectOption('merits');
   await decision.locator('[data-field="result"]').selectOption('conviction');
-  await page.getByRole('button',{name:'Ajouter — Résultats individuels',exact:true}).click();
+  await page.getByRole('button',{name:'Ajouter Résultats individuels',exact:true}).click();
   const outcome=page.locator('[data-group="outcomes"]');
   for(const [field,value]of [['decision_reference','D1'],['person_reference','P1'],['offence_reference','I1']]){
    await outcome.locator('[data-field="'+field+'"]').focus();
    await outcome.locator('[data-field="'+field+'"]').selectOption(value);
   }
   await page.locator('[data-registry-tab="measures"]').click();
-  await page.getByRole('button',{name:'Ajouter — Biens & montants',exact:true}).click();
+  await page.getByRole('button',{name:'Ajouter Biens & montants',exact:true}).click();
   const measure=page.locator('[data-group="measures"]');
   await measure.locator('[data-field="measure_date"]').fill('2026-03-01');
   await measure.locator('[data-field="object_kind"]').selectOption('vehicle');
@@ -106,6 +106,29 @@ const root=path.resolve(__dirname,'..');
   await page.locator('nav').getByRole('link',{name:'Pilotage & rapports',exact:true}).click();
   await page.locator('#dashboard-content .metric-value').first().waitFor();
   assert.equal(await page.locator('#dashboard-content .metric-value').first().innerText(),'2');
+
+  assert.equal(await page.locator('.global-test-banner,.test-banner').count(),0);
+  await page.locator('#dashboard-more-filters').click();
+  assert(await page.locator('#dashboard-filters [name="provenance"]').isVisible());
+  await page.locator('#dashboard-more-filters').click();
+  assert(!await page.locator('#dashboard-filters [name="provenance"]').isVisible());
+  await page.locator('#dashboard-cabinets').selectOption('Cabinet synthétique');
+  await page.waitForFunction(()=>document.querySelector('#dashboard-perimeter').textContent.includes('1 dossiers'));
+  assert.equal(await page.locator('#dashboard-content .metric-value').first().innerText(),'1');
+  await page.locator('#dashboard-cabinets').selectOption('');
+  await page.waitForFunction(()=>document.querySelector('#dashboard-perimeter').textContent.includes('2 dossiers'));
+  await page.locator('#dashboard-graph-type').selectOption('bars');
+  assert.equal(await page.locator('[data-chart="monthly"]').inputValue(),'bars');
+  await page.locator('[data-chart="monthly"]').selectOption('line');
+  assert(await page.locator('#dashboard-content polyline').count()>0);
+  await page.locator('[data-chart="result"]').selectOption('donut');
+  assert(await page.locator('#dashboard-content circle').count()>0);
+  await page.getByText('Choisir les indicateurs',{exact:true}).click();
+  await page.locator('[data-indicator="received"]').uncheck();
+  assert.equal(await page.locator('.dashboard-cards [data-dashboard-metric="received"]').count(),0);
+  await page.locator('[data-indicator="received"]').check();
+  await page.locator('#dashboard-graph-type').selectOption('columns');
+
   for(const tab of ['cases','decisions','people','money','delays','quality','summary']){await page.locator('[data-dashboard-tab="'+tab+'"]').click();assert(await page.locator('#dashboard-content').innerText());}
   const downloadPending=page.waitForEvent('download');await page.locator('#dashboard-export').click();const exported=await downloadPending;assert(fs.readFileSync(await exported.path(),'utf8').includes('Filtres'));
   for(const [url,signature] of [['/registry/reports/pdf','%PDF-'],['/registry/reports/xlsx','PK'],['/registry/records.xlsx','PK'],['/registry/export.json','{']]){const response=await page.request.get(base+url);assert(response.ok());assert((await response.body()).subarray(0,signature.length).toString()===signature);}

@@ -3,11 +3,13 @@ import csv,io,json
 from collections import Counter,defaultdict
 from datetime import date,datetime,timezone
 from decimal import Decimal
-from statistics import median
+from statistics import median,mean
+from pathlib import Path
 from fastapi import Depends,HTTPException,Query
 from fastapi.responses import StreamingResponse
 from .registry import read_record
 from .registry_models import quality,CATALOGUES
+INDICATORS=json.loads((Path(__file__).parent/'indicator_catalogue.json').read_text())
 
 def analyze(c,u,start=None,end=None,as_of=None,date_basis='receipt',cabinet=None,provenance=None,category=None,subtype=None,party=None,transnational=None,status='all',jurisdiction=None,waiting_days=90,q=None,metric=None,sort='rp',direction='asc',limit=25,offset=0):
     if start and end and start>end:raise HTTPException(422,'Période inversée')
@@ -20,7 +22,7 @@ def analyze(c,u,start=None,end=None,as_of=None,date_basis='receipt',cabinet=None
     as_of=as_of or end or date.today()
     if start and start>as_of:raise HTTPException(422,'Observation antérieure au début de période')
     def period(x):return bool(x and (not start or str(x)>=str(start)) and (not end or str(x)<=str(end)) and str(x)<=str(as_of))
-    items=[];groups=defaultdict(set);cats=defaultdict(set);monthly=defaultdict(lambda:Counter());results=defaultdict(set);financial=defaultdict(Decimal);financial_missing=Counter();money_ids=defaultdict(set);alerts=[];professions=Counter();activities=Counter();person_results=Counter();delays=[];options=defaultdict(set)
+    items=[];groups=defaultdict(set);cats=defaultdict(set);monthly=defaultdict(lambda:Counter());results=defaultdict(set);financial=defaultdict(Decimal);financial_missing=Counter();money_ids=defaultdict(set);alerts=[];professions=Counter();activities=Counter();person_results=Counter();delays=[];options=defaultdict(set);cabinets=defaultdict(Counter);decision_count=0;cabinet_options=set()
     for row in c.execute('SELECT * FROM cases ORDER BY id').fetchall():
         case=dict(row);r=read_record(c,case);p=r.procedure;cid=case['id'];received=date.fromisoformat(case['date_rp'])
         from .access import permitted
@@ -31,7 +33,8 @@ def analyze(c,u,start=None,end=None,as_of=None,date_basis='receipt',cabinet=None
         if received>as_of:continue
         dates={'receipt':[received],'closure':[p.closure_date],'hearing':[p.first_hearing_held],'decision':[d.decision_date for d in r.decisions]}
         if not any(period(x) for x in dates[date_basis]):continue
-        if cabinet and p.cabinet not in cabinet:continue
+        cabinet_options.add(p.cabinet or 'Non affecté')
+        if cabinet and (p.cabinet or 'Non affecté') not in cabinet:continue
         if provenance and case['provenance']!=provenance:continue
         if category and case['category']!=category:continue
         if subtype and r.source_context.specific_offence!=subtype:continue
@@ -43,6 +46,9 @@ def analyze(c,u,start=None,end=None,as_of=None,date_basis='receipt',cabinet=None
         if transnational and tn!=transnational:continue
         if q and q.casefold() not in ' '.join(str(case[k] or '') for k in ('rp_number','ri_number','provenance','category')).casefold():continue
         groups['cohort'].add(cid);cats[case['category']].add(cid)
+        cabinets[p.cabinet or 'Non affecté']['cases']+=1
+        if pp is not None:cabinets[p.cabinet or 'Non affecté']['physical']+=pp
+        if pm is not None:cabinets[p.cabinet or 'Non affecté']['legal']+=pm
         for k,v in [('cabinet',p.cabinet),('provenance',case['provenance']),('category',case['category']),('subtype',r.source_context.specific_offence),('jurisdiction',r.jurisdiction_code)]:
             if v:options[k].add(v)
         if period(received):groups['received'].add(cid);monthly[str(received)[:7]]['received']+=1
@@ -55,6 +61,7 @@ def analyze(c,u,start=None,end=None,as_of=None,date_basis='receipt',cabinet=None
         for d in r.decisions:
             if d.decision_date and d.decision_date<=as_of:events.append((str(d.decision_date),'Décision '+(d.number or d.reference)))
             if not period(d.decision_date):continue
+            decision_count+=1;groups['decisions'].add(cid);cabinets[p.cabinet or 'Non affecté']['decisions']+=1
             monthly[str(d.decision_date)[:7]]['decisions']+=1
             if d.nature in ('merits','mixed','partial_merits'):
                 groups['judged'].add(cid)
@@ -85,6 +92,10 @@ def analyze(c,u,start=None,end=None,as_of=None,date_basis='receipt',cabinet=None
         age=(as_of-received).days
         last=max(events)[0]
         inactive=(as_of-date.fromisoformat(last)).days
+        if age>waiting_days:groups['old'].add(cid)
+        if inactive>waiting_days:groups['inactive'].add(cid)
+        if case['status']=='returned':groups['returned'].add(cid)
+        groups['age_mean'].add(cid)
         if inactive>waiting_days:alerts.append({'id':cid,'rp':case['rp_number'],'type':'followup','reason':f'Aucun événement daté depuis {inactive} jours ; seuil indicatif {waiting_days}','action':'Vérifier le stade et les prochaines actions','responsible':p.cabinet or None})
         for when,label in future:
             if (date.fromisoformat(when)-as_of).days<=14:alerts.append({'id':cid,'rp':case['rp_number'],'type':'followup','reason':label+' le '+when,'action':'Préparer l’audience','responsible':p.cabinet or None})
@@ -94,11 +105,21 @@ def analyze(c,u,start=None,end=None,as_of=None,date_basis='receipt',cabinet=None
     def money(kind):
         vals=[v for (k,cur,b),v in financial.items() if k==kind and cur=='XOF'];return str(sum(vals,Decimal())) if vals and not financial_missing[kind] else None
     cards=[card('received','Dossiers reçus',len(groups['received']),'dossiers','RP + année distincts ; date RP dans la période et le périmètre sélectionné.'),card('judged','Dossiers avec décision au fond',len(groups['judged']),'dossiers','Au moins une décision au fond datée dans la période ; chaque dossier compte une fois.'),card('stock','Dossiers en cours',None,'dossiers','Non calculable : la clôture d’instruction ne prouve pas la fin du dossier judiciaire ; historique de terminaison à valider.',False),card('persons','Personnes poursuivies',sum((x['pp'] or 0)+(x['pm'] or 0) for x in items),'personnes dans leurs dossiers','Fiches individuelles si énumérées ; sinon effectifs déclarés. Aucune déduplication entre dossiers.',bool(items) and pp_known and pm_known),card('seizure','Montants saisis',money('seizure'),'FCFA','Mesures datées dans la période ; XOF seulement, sans conversion. Montants inconnus bloquent le total complet.',money('seizure') is not None),card('confiscation','Montants confisqués',money('confiscation'),'FCFA','Mesures datées dans la période ; valeurs saisies, sans présumer leur exécution.',money('confiscation') is not None),card('delay','Délai médian réception → décision',median(delays) if delays else None,'jours','Observations par décision au fond ; intervalles complets et positifs, pas une estimation des dossiers ouverts.',bool(delays)),card('quality','Dossiers à vérifier',len(groups['quality']),'dossiers','Dossiers distincts ayant au moins un contrôle de qualité ; ne constitue pas une conclusion juridique.')]
+    groups['delay_mean']=groups['delay'];groups['completion']={x['id'] for x in items if not x['issue_count']}
+    cards.extend([card('decisions','Décisions rendues',decision_count,'décisions','Toutes natures de décisions datées dans la période ; une décision ne constitue pas nécessairement un dossier distinct.'),card('age_mean','Ancienneté moyenne depuis RP',round(mean(x['age_days'] for x in items),1) if items else None,'jours','Ancienneté de la cohorte depuis la réception ; ne désigne pas un stock de dossiers ouverts.',bool(items)),card('old','Dossiers anciens',len(groups['old']),'dossiers',f'Ancienneté depuis RP supérieure au seuil indicatif de {waiting_days} jours, sans conclusion juridique.'),card('inactive','Dossiers sans mouvement récent',len(groups['inactive']),'dossiers',f'Aucun événement daté depuis plus de {waiting_days} jours ; seuil de suivi indicatif.'),card('returned','Dossiers retournés pour correction',len(groups['returned']),'dossiers','Statut de validation retourné dans la cohorte.'),card('delay_mean','Délai moyen réception → décision',round(mean(delays),1) if delays else None,'jours','Moyenne des intervalles connus jusqu’aux décisions au fond ; aucune prévision.',bool(delays)),card('completion','Dossiers sans anomalie détectée',round(100*len(groups['completion'])/len(items),1) if items else None,'%', 'Dossiers sans alerte du contrôleur actuel divisés par les dossiers de la cohorte ; pas une certification de complétude.',bool(items))])
     if metric and metric not in {x['key'] for x in cards}|set(groups):raise HTTPException(422,'Indicateur inconnu')
     filtered=[x for x in items if not metric or x['id'] in groups[metric]]
     filtered.sort(key=lambda x:(x.get(sort) is None,str(x.get(sort) or '')),reverse=direction=='desc')
     params={'start':str(start) if start else None,'end':str(end) if end else None,'as_of':str(as_of),'date_basis':date_basis,'cabinet':cabinet,'provenance':provenance,'category':category,'subtype':subtype,'party':party,'transnational':transnational,'status':status,'jurisdiction':jurisdiction,'waiting_days':waiting_days,'q':q,'metric':metric,'sort':sort,'direction':direction}
-    return {'generated_at':datetime.now(timezone.utc).isoformat(),'filters':params,'population':'Données fictives — '+('tous statuts, sans validation métier' if status=='all' else status),'officially_approved':False,'cards':cards,'persons':{'physical':sum(x['pp'] or 0 for x in items) if pp_known else None,'legal':sum(x['pm'] or 0 for x in items) if pm_known else None,'professions':dict(professions),'activities':dict(activities),'individual_outcomes':dict(person_results)},'monthly':[{'month':k,**v} for k,v in sorted(monthly.items())],'categories':[{'label':k,'count':len(v)} for k,v in sorted(cats.items(),key=lambda x:-len(x[1]))],'results':[{'key':k,'count':len(v),'unit':'décisions'} for k,v in results.items()],'financial':[{'kind':k,'currency':cur,'basis':b,'amount':str(v)} for (k,cur,b),v in sorted(financial.items())],'financial_missing':dict(financial_missing),'alerts':alerts[:200],'alerts_total':len(alerts),'rows':filtered[offset:offset+limit],'total':len(filtered),'cohort_size':len(items),'options':{k:sorted(v) for k,v in options.items()},'limits':['Les habilitations par profil, cabinet et juridiction sont appliquées côté serveur ; les comptes historiques sans profil conservent leur périmètre existant.','Calendrier exhaustif, renvois successifs et exécution des confiscations non disponibles.','Jeu enrichi : tous les dossiers suivent une instruction et une décision au fond ; autres parcours absents.','Les montants de bases de valorisation différentes sont détaillés séparément ; leur comparaison économique nécessite un périmètre validé.'],'delay_distribution':dict(Counter('0–30 jours' if x<=30 else '31–90 jours' if x<=90 else '91–180 jours' if x<=180 else 'Plus de 180 jours' for x in delays))}
+    output={'generated_at':datetime.now(timezone.utc).isoformat(),'filters':params,'population':('Tous les statuts' if status=='all' else {'draft':'Brouillons','submitted':'Soumis','returned':'Retournés','validated':'Validés'}[status]),'officially_approved':False,'cards':cards,'persons':{'physical':sum(x['pp'] or 0 for x in items) if pp_known else None,'legal':sum(x['pm'] or 0 for x in items) if pm_known else None,'professions':dict(professions),'activities':dict(activities),'individual_outcomes':dict(person_results)},'monthly':[{'month':k,**v} for k,v in sorted(monthly.items())],'categories':[{'label':k,'count':len(v)} for k,v in sorted(cats.items(),key=lambda x:-len(x[1]))],'results':[{'key':k,'count':len(v),'unit':'décisions'} for k,v in results.items()],'financial':[{'kind':k,'currency':cur,'basis':b,'amount':str(v)} for (k,cur,b),v in sorted(financial.items())],'financial_missing':dict(financial_missing),'alerts':alerts[:200],'alerts_total':len(alerts),'rows':filtered[offset:offset+limit],'total':len(filtered),'cohort_size':len(items),'options':{k:sorted(v) for k,v in options.items()},'limits':['Les habilitations par profil, cabinet et juridiction sont appliquées côté serveur ; les comptes historiques sans profil conservent leur périmètre existant.','Calendrier exhaustif, renvois successifs et exécution des confiscations non disponibles.','Jeu enrichi : tous les dossiers suivent une instruction et une décision au fond ; autres parcours absents.','Les montants de bases de valorisation différentes sont détaillés séparément ; leur comparaison économique nécessite un périmètre validé.'],'delay_distribution':dict(Counter('0–30 jours' if x<=30 else '31–90 jours' if x<=90 else '91–180 jours' if x<=180 else 'Plus de 180 jours' for x in delays))}
+
+
+    output['by_cabinet']=[{'label':k,**v} for k,v in sorted(cabinets.items())]
+    output['options']['cabinet']=sorted(cabinet_options)
+    output['indicator_catalogue']=INDICATORS
+    output['by_status']=[{'label':k,'count':v} for k,v in Counter(x['status'] for x in items).items()]
+    output['dataset_kind']='synthetic'
+    return output
 
 def install(app,db,audit,utcnow,user_from_token,require_roles,safe_cell):
     def arguments(start:date|None=None,end:date|None=None,as_of:date|None=None,date_basis:str='receipt',cabinet:list[str]|None=Query(default=None),provenance:str|None=None,category:str|None=None,subtype:str|None=None,party:str|None=None,transnational:str|None=None,status:str='all',jurisdiction:str|None=None,waiting_days:int=Query(default=90,ge=1,le=3650),q:str|None=None,metric:str|None=None,sort:str='rp',direction:str='asc',limit:int=Query(default=25,ge=1,le=500),offset:int=Query(default=0,ge=0)):
@@ -112,7 +133,7 @@ def install(app,db,audit,utcnow,user_from_token,require_roles,safe_cell):
         with db(write=True) as c:
             data=analyze(c,u,**args);audit(c,u['id'],'export','dashboard',detail={'filters':data['filters'],'rows':data['total']})
         buf=io.StringIO();w=csv.writer(buf)
-        w.writerow(['Données fictives — environnement de test']);w.writerow(['Génération UTC',data['generated_at']]);w.writerow(['Filtres',json.dumps(data['filters'],ensure_ascii=False)]);w.writerow(['Unités','FCFA pour XOF ; jours ; personnes dans leurs dossiers'])
+        w.writerow(['SISAJ / État filtré']);w.writerow(['Génération UTC',data['generated_at']]);w.writerow(['Filtres',json.dumps(data['filters'],ensure_ascii=False)]);w.writerow(['Unités','FCFA pour XOF ; jours ; personnes dans leurs dossiers'])
         keys=list(data['rows'][0]) if data['rows'] else ['id','rp'];w.writerow(keys)
         for row in data['rows']:w.writerow([safe_cell(row.get(k)) for k in keys])
         return StreamingResponse(io.BytesIO(('\ufeff'+buf.getvalue()).encode()),media_type='text/csv',headers={'Content-Disposition':'attachment; filename="tableau_bord_filtre.csv"'})
