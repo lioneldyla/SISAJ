@@ -2,13 +2,13 @@
 
 ## État de livraison
 
-La v0.5 est déployée. Le correctif v0.5.1 est préparé sur une branche distincte : cette fiche ne vaut pas confirmation de son déploiement. Aucun nouveau contrôle du navigateur Render, import hébergé ou changement de production n'est exécuté dans cette étape, pour laisser l'onglet disponible à l'autre conversation.
+La **v0.5.1 est déployée** à la demande du propriétaire, après sauvegarde réelle vérifiée. La PR #3 est intégrée ; Render indique `Deploy succeeded|Live` sur le commit `f05918c67077b67f3b20e08d81e6b84dce0d677d`. Les contrôles `/platform/config`, `/ready`, session administrateur, Imports et Paramètres sont réussis. Les 21 tables, contenus, structures et séquences restent identiques à la sauvegarde après déploiement. Preuves : `evidence/v051/render-backup.json` et `evidence/v051/render-deployment.json`. Aucun dossier ni fichier joint importé sur le site.
 
 Les essais automatiques utilisent exclusivement des dossiers fictifs. Le classeur joint est un modèle sans dossier renseigné. La validation des nomenclatures et règles par les responsables métier reste à obtenir.
 
 Contrôles locaux v0.5.1 réussis : **75 tests applicatifs**, parcours navigateur desktop/mobile incluant le refus d'une cellule sans en-tête et l'avertissement de résultat à confirmer, aucun message d'erreur JavaScript, restauration synthétique des **21 tables**. La lecture du classeur joint retrouve 76 colonnes, zéro dossier et zéro erreur. Preuves dans `evidence/v051/`. Les contrôles PostgreSQL sont exécutés séparément par GitHub Actions ; leur statut doit être lu sur la PR avant intégration.
 
-Les trois jobs du [workflow 40174219158](https://github.com/lioneldyla/SISAJ/actions/runs/40174219158) sont réussis sur le commit `12ae224996dd0493ad6c2b8b3279a09c9da3fa7a` : **75 tests SQLite, 4 tests historiques, 70 tests PostgreSQL 16 et 70 tests PostgreSQL 18**, restaurations des 21 tables et parcours navigateur sans erreur JavaScript. Voir `evidence/v051/ci.txt`. La [PR #3](https://github.com/lioneldyla/SISAJ/pull/3) est prête à intégrer ; aucune mise en ligne v0.5.1 n'est revendiquée ici.
+Les trois jobs du [workflow 40174219158](https://github.com/lioneldyla/SISAJ/actions/runs/40174219158) sont réussis sur le commit `12ae224996dd0493ad6c2b8b3279a09c9da3fa7a` : **75 tests SQLite, 4 tests historiques, 70 tests PostgreSQL 16 et 70 tests PostgreSQL 18**, restaurations des 21 tables et parcours navigateur sans erreur JavaScript. Voir `evidence/v051/ci.txt`. La [PR #3](https://github.com/lioneldyla/SISAJ/pull/3) est intégrée et déployée ; la recette métier institutionnelle reste distincte de ces vérifications techniques.
 
 ## Parcours à faire accepter
 

@@ -1,0 +1,32 @@
+{
+  "version": "0.5.1",
+  "url": "https://sisa-platform-demo.onrender.com/",
+  "commit": "f05918c67077b67f3b20e08d81e6b84dce0d677d",
+  "pull_request": "https://github.com/lioneldyla/SISAJ/pull/3",
+  "render_deploy_id": "dep-dbet7ktg1s2s73dnqr50",
+  "render_status": "Deploy succeeded|Live",
+  "platform_config": {
+    "version": "0.5.1",
+    "initialized": true,
+    "deployment": "Render",
+    "data_mode": "synthetic"
+  },
+  "ready": {
+    "http_status": 200,
+    "status": "ready",
+    "storage": "postgresql"
+  },
+  "authenticated_session_preserved": true,
+  "imports_page_verified": true,
+  "settings_version_verified": true,
+  "browser_javascript_errors": 0,
+  "post_deployment_comparison": {
+    "tables": 21,
+    "contents_and_structures_preserved": true,
+    "sequences_preserved": true,
+    "cases": 0,
+    "read_only": true
+  },
+  "backup_proof": "render-backup.json",
+  "institutional_acceptance": false
+}

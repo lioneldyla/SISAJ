@@ -10,7 +10,7 @@ Reprise des 31 variables et des colonnes complémentaires du classeur PPEF : sai
 
 [Bilan et limites v0.5](docs/validation_v05.md) · [Correspondances du classeur](docs/ppef_column_mapping.json) · [Planche visuelle](docs/planche_visuelle.html).
 
-Le correctif **v0.5.1**, préparé séparément du site en ligne, renforce l'import sans perte et la confirmation humaine des décisions rédigées en texte libre. Voir le [guide de recette des agents et du superviseur](docs/recette_ppef.md), avec les cas de contrôle et le passage de relais pour Render.
+Le correctif **v0.5.1 est déployé sur Render** (commit `f05918c`) après sauvegarde réelle vérifiée et comparaison des 21 tables avant/après déploiement. Il renforce l'import sans perte et la confirmation humaine des décisions rédigées en texte libre. Voir le [guide de recette des agents et du superviseur](docs/recette_ppef.md), avec les cas de contrôle et le passage de relais pour Render.
 
 **La v0.5 a passé les contrôles SQLite, navigateur et PostgreSQL 16/18. La sauvegarde réelle v0.4 a été restaurée et comparée dans une base Render isolée avant mise en ligne.** Voir les preuves dans `docs/evidence/v05/`. Aucun import du fichier joint sur le site.
 
