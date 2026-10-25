@@ -24,6 +24,14 @@ jobs:
       - run: npm ci
       - run: npx playwright install --with-deps chromium
       - run: npm run test:e2e
+        env:
+          SISA_SCREENSHOT_DIR: /tmp/sisa-overview-qa
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: overview-browser-qa
+          path: /tmp/sisa-overview-qa/*.png
+          if-no-files-found: ignore
   postgresql:
     strategy:
       matrix:

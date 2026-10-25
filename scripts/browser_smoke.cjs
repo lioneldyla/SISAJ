@@ -106,6 +106,25 @@ const root=path.resolve(__dirname,'..');
   await page.locator('nav').getByRole('link',{name:'Pilotage & rapports',exact:true}).click();
   await page.locator('#dashboard-content .metric-value').first().waitFor();
   assert.equal(await page.locator('#dashboard-content .metric-value').first().innerText(),'2');
+
+  assert.equal(await page.locator('.global-test-banner,.test-banner').count(),0);
+  await page.locator('#dashboard-cabinets').selectOption('Cabinet synthétique');
+  await page.waitForFunction(()=>document.querySelector('#dashboard-perimeter').textContent.includes('1 dossiers'));
+  assert.equal(await page.locator('#dashboard-content .metric-value').first().innerText(),'1');
+  await page.locator('#dashboard-cabinets').selectOption('');
+  await page.waitForFunction(()=>document.querySelector('#dashboard-perimeter').textContent.includes('2 dossiers'));
+  await page.locator('#dashboard-graph-type').selectOption('bars');
+  assert.equal(await page.locator('[data-chart="monthly"]').inputValue(),'bars');
+  await page.locator('[data-chart="monthly"]').selectOption('line');
+  assert(await page.locator('#dashboard-content polyline').count()>0);
+  await page.locator('[data-chart="result"]').selectOption('donut');
+  assert(await page.locator('#dashboard-content circle').count()>0);
+  await page.getByText('Choisir les indicateurs',{exact:true}).click();
+  await page.locator('[data-indicator="received"]').uncheck();
+  assert.equal(await page.locator('.dashboard-cards [data-dashboard-metric="received"]').count(),0);
+  await page.locator('[data-indicator="received"]').check();
+  await page.locator('#dashboard-graph-type').selectOption('columns');
+
   for(const tab of ['cases','decisions','people','money','delays','quality','summary']){await page.locator('[data-dashboard-tab="'+tab+'"]').click();assert(await page.locator('#dashboard-content').innerText());}
   const downloadPending=page.waitForEvent('download');await page.locator('#dashboard-export').click();const exported=await downloadPending;assert(fs.readFileSync(await exported.path(),'utf8').includes('Filtres'));
   for(const [url,signature] of [['/registry/reports/pdf','%PDF-'],['/registry/reports/xlsx','PK'],['/registry/records.xlsx','PK'],['/registry/export.json','{']]){const response=await page.request.get(base+url);assert(response.ok());assert((await response.body()).subarray(0,signature.length).toString()===signature);}

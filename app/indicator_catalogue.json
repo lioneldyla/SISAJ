@@ -1,0 +1,506 @@
+[
+  {
+    "code": "PEN-01",
+    "label": "Stock initial",
+    "definition": "Dossiers en cours au premier jour de la période",
+    "metric": null,
+    "available": false,
+    "limit": "Données distinctes ou règle de comptage validée nécessaires ; aucun calcul automatique proposé."
+  },
+  {
+    "code": "PEN-02",
+    "label": "Nouveaux dossiers reçus",
+    "definition": "Nombre de dossiers enregistrés pendant la période",
+    "metric": "received",
+    "available": true,
+    "limit": "Mesure descriptive selon les définitions des cartes correspondantes ; nomenclature et règle officielle à valider."
+  },
+  {
+    "code": "PEN-03",
+    "label": "Dossiers clôturés",
+    "definition": "Nombre de dossiers ayant atteint le statut de clôture retenu",
+    "metric": null,
+    "available": false,
+    "limit": "Données distinctes ou règle de comptage validée nécessaires ; aucun calcul automatique proposé."
+  },
+  {
+    "code": "PEN-04",
+    "label": "Stock final",
+    "definition": "Dossiers restant en cours à la fin de la période",
+    "metric": null,
+    "available": false,
+    "limit": "Données distinctes ou règle de comptage validée nécessaires ; aucun calcul automatique proposé."
+  },
+  {
+    "code": "PEN-05",
+    "label": "Dossiers en cours",
+    "definition": "Dossiers ouverts et non clôturés à une date donnée",
+    "metric": null,
+    "available": false,
+    "limit": "Données distinctes ou règle de comptage validée nécessaires ; aucun calcul automatique proposé."
+  },
+  {
+    "code": "PEN-06",
+    "label": "Taux de clôture",
+    "definition": "Dossiers clôturés ÷ dossiers à traiter sur la période × 100, selon une règle validée",
+    "metric": null,
+    "available": false,
+    "limit": "Données distinctes ou règle de comptage validée nécessaires ; aucun calcul automatique proposé."
+  },
+  {
+    "code": "PEN-07",
+    "label": "Variation du stock",
+    "definition": "Stock final − stock initial",
+    "metric": null,
+    "available": false,
+    "limit": "Données distinctes ou règle de comptage validée nécessaires ; aucun calcul automatique proposé."
+  },
+  {
+    "code": "PEN-08",
+    "label": "Ancienneté moyenne des dossiers",
+    "definition": "Moyenne des jours écoulés depuis la date de référence retenue",
+    "metric": "age_mean",
+    "available": true,
+    "limit": "Mesure descriptive selon les définitions des cartes correspondantes ; nomenclature et règle officielle à valider."
+  },
+  {
+    "code": "PEN-09",
+    "label": "Dossiers anciens",
+    "definition": "Nombre de dossiers dépassant un seuil de durée paramétrable",
+    "metric": "old",
+    "available": true,
+    "limit": "Mesure descriptive selon les définitions des cartes correspondantes ; nomenclature et règle officielle à valider."
+  },
+  {
+    "code": "PEN-10",
+    "label": "Dossiers sans mouvement récent",
+    "definition": "Nombre de dossiers sans événement enregistré depuis un délai paramétrable",
+    "metric": "inactive",
+    "available": true,
+    "limit": "Mesure descriptive selon les définitions des cartes correspondantes ; nomenclature et règle officielle à valider."
+  },
+  {
+    "code": "PEN-11",
+    "label": "Répartition des dossiers",
+    "definition": "Par nature, procédure, infraction, statut ou service",
+    "metric": null,
+    "available": false,
+    "limit": "Données distinctes ou règle de comptage validée nécessaires ; aucun calcul automatique proposé."
+  },
+  {
+    "code": "PEN-12",
+    "label": "Dossiers incomplets",
+    "definition": "Dossiers pour lesquels un ou plusieurs champs obligatoires manquent",
+    "metric": "quality",
+    "available": true,
+    "limit": "Mesure descriptive selon les définitions des cartes correspondantes ; nomenclature et règle officielle à valider."
+  },
+  {
+    "code": "AUD-01",
+    "label": "Affaires enrôlées",
+    "definition": "Nombre d’affaires inscrites au rôle pendant la période",
+    "metric": null,
+    "available": false,
+    "limit": "Données distinctes ou règle de comptage validée nécessaires ; aucun calcul automatique proposé."
+  },
+  {
+    "code": "AUD-02",
+    "label": "Audiences tenues",
+    "definition": "Nombre d’audiences effectivement tenues",
+    "metric": null,
+    "available": false,
+    "limit": "Données distinctes ou règle de comptage validée nécessaires ; aucun calcul automatique proposé."
+  },
+  {
+    "code": "AUD-03",
+    "label": "Affaires appelées",
+    "definition": "Nombre d’affaires effectivement appelées à l’audience",
+    "metric": null,
+    "available": false,
+    "limit": "Données distinctes ou règle de comptage validée nécessaires ; aucun calcul automatique proposé."
+  },
+  {
+    "code": "AUD-04",
+    "label": "Affaires mises en délibéré",
+    "definition": "Nombre d’affaires dont le délibéré est enregistré",
+    "metric": null,
+    "available": false,
+    "limit": "Données distinctes ou règle de comptage validée nécessaires ; aucun calcul automatique proposé."
+  },
+  {
+    "code": "AUD-05",
+    "label": "Affaires renvoyées",
+    "definition": "Nombre d’affaires ayant fait l’objet d’un renvoi",
+    "metric": null,
+    "available": false,
+    "limit": "Données distinctes ou règle de comptage validée nécessaires ; aucun calcul automatique proposé."
+  },
+  {
+    "code": "AUD-06",
+    "label": "Affaires jugées",
+    "definition": "Nombre d’affaires ayant reçu une décision selon la définition retenue",
+    "metric": "judged",
+    "available": true,
+    "limit": "Mesure descriptive selon les définitions des cartes correspondantes ; nomenclature et règle officielle à valider."
+  },
+  {
+    "code": "AUD-07",
+    "label": "Taux de renvoi",
+    "definition": "Affaires renvoyées ÷ affaires appelées × 100",
+    "metric": null,
+    "available": false,
+    "limit": "Données distinctes ou règle de comptage validée nécessaires ; aucun calcul automatique proposé."
+  },
+  {
+    "code": "AUD-08",
+    "label": "Taux de jugement",
+    "definition": "Affaires jugées ÷ affaires appelées × 100, sous réserve d’un périmètre homogène",
+    "metric": null,
+    "available": false,
+    "limit": "Données distinctes ou règle de comptage validée nécessaires ; aucun calcul automatique proposé."
+  },
+  {
+    "code": "AUD-09",
+    "label": "Délai moyen avant audience",
+    "definition": "Date de première audience − date de référence procédurale",
+    "metric": null,
+    "available": false,
+    "limit": "Données distinctes ou règle de comptage validée nécessaires ; aucun calcul automatique proposé."
+  },
+  {
+    "code": "AUD-10",
+    "label": "Délai de délibéré",
+    "definition": "Date de prononcé − date de mise en délibéré",
+    "metric": null,
+    "available": false,
+    "limit": "Données distinctes ou règle de comptage validée nécessaires ; aucun calcul automatique proposé."
+  },
+  {
+    "code": "AUD-11",
+    "label": "Charge moyenne par audience",
+    "definition": "Affaires appelées ÷ audiences tenues",
+    "metric": null,
+    "available": false,
+    "limit": "Données distinctes ou règle de comptage validée nécessaires ; aucun calcul automatique proposé."
+  },
+  {
+    "code": "AUD-12",
+    "label": "Motifs de renvoi",
+    "definition": "Répartition des renvois selon les motifs enregistrés",
+    "metric": null,
+    "available": false,
+    "limit": "Données distinctes ou règle de comptage validée nécessaires ; aucun calcul automatique proposé."
+  },
+  {
+    "code": "DEC-01",
+    "label": "Nombre de décisions rendues",
+    "definition": "Décisions enregistrées pendant la période",
+    "metric": "decisions",
+    "available": true,
+    "limit": "Mesure descriptive selon les définitions des cartes correspondantes ; nomenclature et règle officielle à valider."
+  },
+  {
+    "code": "DEC-02",
+    "label": "Décisions par nature",
+    "definition": "Répartition selon la catégorie de décision",
+    "metric": null,
+    "available": false,
+    "limit": "Données distinctes ou règle de comptage validée nécessaires ; aucun calcul automatique proposé."
+  },
+  {
+    "code": "DEC-03",
+    "label": "Résultats par décision",
+    "definition": "Répartition selon les résultats effectivement enregistrés",
+    "metric": null,
+    "available": false,
+    "limit": "Données distinctes ou règle de comptage validée nécessaires ; aucun calcul automatique proposé."
+  },
+  {
+    "code": "DEC-04",
+    "label": "Décisions par infraction",
+    "definition": "Nombre de décisions associées à chaque qualification",
+    "metric": null,
+    "available": false,
+    "limit": "Données distinctes ou règle de comptage validée nécessaires ; aucun calcul automatique proposé."
+  },
+  {
+    "code": "DEC-05",
+    "label": "Décisions par période",
+    "definition": "Répartition mensuelle, trimestrielle ou annuelle",
+    "metric": null,
+    "available": false,
+    "limit": "Données distinctes ou règle de comptage validée nécessaires ; aucun calcul automatique proposé."
+  },
+  {
+    "code": "DEC-06",
+    "label": "Décisions en attente de rédaction",
+    "definition": "Décisions prononcées dont l’acte correspondant n’est pas finalisé",
+    "metric": null,
+    "available": false,
+    "limit": "Données distinctes ou règle de comptage validée nécessaires ; aucun calcul automatique proposé."
+  },
+  {
+    "code": "DEC-07",
+    "label": "Décisions en attente de signature",
+    "definition": "Selon le circuit réel de validation et de signature",
+    "metric": null,
+    "available": false,
+    "limit": "Données distinctes ou règle de comptage validée nécessaires ; aucun calcul automatique proposé."
+  },
+  {
+    "code": "DEC-08",
+    "label": "Décisions en attente de mise à disposition",
+    "definition": "Selon les statuts réellement gérés par le greffe",
+    "metric": null,
+    "available": false,
+    "limit": "Données distinctes ou règle de comptage validée nécessaires ; aucun calcul automatique proposé."
+  },
+  {
+    "code": "DEC-09",
+    "label": "Délai de rédaction",
+    "definition": "Date de finalisation − date de prononcé",
+    "metric": null,
+    "available": false,
+    "limit": "Données distinctes ou règle de comptage validée nécessaires ; aucun calcul automatique proposé."
+  },
+  {
+    "code": "DEC-10",
+    "label": "Délai de délivrance",
+    "definition": "Date de délivrance − date de la demande, si ces deux dates sont enregistrées",
+    "metric": null,
+    "available": false,
+    "limit": "Données distinctes ou règle de comptage validée nécessaires ; aucun calcul automatique proposé."
+  },
+  {
+    "code": "DEC-11",
+    "label": "Décisions par juridiction ou chambre",
+    "definition": "Répartition par structure de traitement",
+    "metric": null,
+    "available": false,
+    "limit": "Données distinctes ou règle de comptage validée nécessaires ; aucun calcul automatique proposé."
+  },
+  {
+    "code": "DEC-12",
+    "label": "Décisions avec données manquantes",
+    "definition": "Décisions dépourvues d’informations nécessaires au suivi",
+    "metric": null,
+    "available": false,
+    "limit": "Données distinctes ou règle de comptage validée nécessaires ; aucun calcul automatique proposé."
+  },
+  {
+    "code": "SAI-01",
+    "label": "Nombre de saisies enregistrées",
+    "definition": "Nombre d’opérations de saisie pendant la période",
+    "metric": null,
+    "available": false,
+    "limit": "Données distinctes ou règle de comptage validée nécessaires ; aucun calcul automatique proposé."
+  },
+  {
+    "code": "SAI-02",
+    "label": "Nombre de biens saisis",
+    "definition": "Nombre d’objets ou de biens individualisés",
+    "metric": null,
+    "available": false,
+    "limit": "Données distinctes ou règle de comptage validée nécessaires ; aucun calcul automatique proposé."
+  },
+  {
+    "code": "SAI-03",
+    "label": "Saisies par catégorie de biens",
+    "definition": "Véhicules, espèces, biens immobiliers, téléphones, autres catégories paramétrées",
+    "metric": null,
+    "available": false,
+    "limit": "Données distinctes ou règle de comptage validée nécessaires ; aucun calcul automatique proposé."
+  },
+  {
+    "code": "SAI-04",
+    "label": "Valeur estimée des biens saisis",
+    "definition": "Somme des valeurs estimées disponibles",
+    "metric": null,
+    "available": false,
+    "limit": "Données distinctes ou règle de comptage validée nécessaires ; aucun calcul automatique proposé."
+  },
+  {
+    "code": "SAI-05",
+    "label": "Nombre de scellés",
+    "definition": "Nombre de scellés individualisés et enregistrés",
+    "metric": null,
+    "available": false,
+    "limit": "Données distinctes ou règle de comptage validée nécessaires ; aucun calcul automatique proposé."
+  },
+  {
+    "code": "SAI-06",
+    "label": "Biens en conservation",
+    "definition": "Biens ou scellés dont la situation indique une conservation en cours",
+    "metric": null,
+    "available": false,
+    "limit": "Données distinctes ou règle de comptage validée nécessaires ; aucun calcul automatique proposé."
+  },
+  {
+    "code": "SAI-07",
+    "label": "Biens restitués",
+    "definition": "Nombre de biens dont la restitution est documentée",
+    "metric": null,
+    "available": false,
+    "limit": "Données distinctes ou règle de comptage validée nécessaires ; aucun calcul automatique proposé."
+  },
+  {
+    "code": "SAI-08",
+    "label": "Biens confisqués",
+    "definition": "Nombre de biens visés par une confiscation dont le statut juridique est confirmé",
+    "metric": null,
+    "available": false,
+    "limit": "Données distinctes ou règle de comptage validée nécessaires ; aucun calcul automatique proposé."
+  },
+  {
+    "code": "SAI-09",
+    "label": "Valeur des biens confisqués",
+    "definition": "Somme des valeurs retenues selon une méthode documentée",
+    "metric": "confiscation",
+    "available": true,
+    "limit": "Somme des montants XOF enregistrés, bases de valorisation conservées séparément ; ne prouve pas l’exécution de la mesure."
+  },
+  {
+    "code": "SAI-10",
+    "label": "Biens en attente de décision",
+    "definition": "Biens dont la situation reste en attente d’une décision ou d’une instruction",
+    "metric": null,
+    "available": false,
+    "limit": "Données distinctes ou règle de comptage validée nécessaires ; aucun calcul automatique proposé."
+  },
+  {
+    "code": "SAI-11",
+    "label": "Délai de traitement des biens",
+    "definition": "Durée entre la date de saisie et la date de l’événement de sortie retenu",
+    "metric": null,
+    "available": false,
+    "limit": "Données distinctes ou règle de comptage validée nécessaires ; aucun calcul automatique proposé."
+  },
+  {
+    "code": "SAI-12",
+    "label": "Biens sans localisation renseignée",
+    "definition": "Biens pour lesquels la localisation ou le lieu de conservation manque",
+    "metric": null,
+    "available": false,
+    "limit": "Données distinctes ou règle de comptage validée nécessaires ; aucun calcul automatique proposé."
+  },
+  {
+    "code": "SAI-13",
+    "label": "Biens sans issue enregistrée",
+    "definition": "Biens dont le statut reste à préciser selon les règles de gestion",
+    "metric": null,
+    "available": false,
+    "limit": "Données distinctes ou règle de comptage validée nécessaires ; aucun calcul automatique proposé."
+  },
+  {
+    "code": "SAI-14",
+    "label": "Répartition des issues",
+    "definition": "Restitution, confiscation, transfert, maintien sous scellés ou autre issue autorisée",
+    "metric": null,
+    "available": false,
+    "limit": "Données distinctes ou règle de comptage validée nécessaires ; aucun calcul automatique proposé."
+  },
+  {
+    "code": "SAI-15",
+    "label": "Écart de rapprochement",
+    "definition": "Écart entre inventaire enregistré et inventaire physique vérifié, si les deux existent",
+    "metric": null,
+    "available": false,
+    "limit": "Données distinctes ou règle de comptage validée nécessaires ; aucun calcul automatique proposé."
+  },
+  {
+    "code": "PIL-01",
+    "label": "Délai médian de traitement",
+    "definition": "Médiane des durées calculées sur les dossiers terminés",
+    "metric": "delay",
+    "available": true,
+    "limit": "Mesure descriptive selon les définitions des cartes correspondantes ; nomenclature et règle officielle à valider."
+  },
+  {
+    "code": "PIL-02",
+    "label": "Délai moyen de traitement",
+    "definition": "Moyenne des durées calculées sur les dossiers terminés",
+    "metric": "delay_mean",
+    "available": true,
+    "limit": "Mesure descriptive selon les définitions des cartes correspondantes ; nomenclature et règle officielle à valider."
+  },
+  {
+    "code": "PIL-03",
+    "label": "Dossiers au-delà du délai cible",
+    "definition": "Nombre de dossiers dépassant un seuil validé",
+    "metric": null,
+    "available": false,
+    "limit": "Données distinctes ou règle de comptage validée nécessaires ; aucun calcul automatique proposé."
+  },
+  {
+    "code": "PIL-04",
+    "label": "Taux de respect du délai cible",
+    "definition": "Dossiers terminés dans le délai ÷ dossiers terminés éligibles × 100",
+    "metric": null,
+    "available": false,
+    "limit": "Données distinctes ou règle de comptage validée nécessaires ; aucun calcul automatique proposé."
+  },
+  {
+    "code": "PIL-05",
+    "label": "Volume traité par agent",
+    "definition": "Opérations ou dossiers traités par agent, si l’attribution est fiable",
+    "metric": null,
+    "available": false,
+    "limit": "Données distinctes ou règle de comptage validée nécessaires ; aucun calcul automatique proposé."
+  },
+  {
+    "code": "PIL-06",
+    "label": "Charge par service",
+    "definition": "Nombre de dossiers actifs ou d’opérations par service",
+    "metric": null,
+    "available": false,
+    "limit": "Données distinctes ou règle de comptage validée nécessaires ; aucun calcul automatique proposé."
+  },
+  {
+    "code": "PIL-07",
+    "label": "Taux de complétude",
+    "definition": "Enregistrements complets ÷ enregistrements évalués × 100",
+    "metric": "completion",
+    "available": true,
+    "limit": "Mesure descriptive selon les définitions des cartes correspondantes ; nomenclature et règle officielle à valider."
+  },
+  {
+    "code": "PIL-08",
+    "label": "Taux d’erreurs d’importation",
+    "definition": "Lignes rejetées ÷ lignes importées × 100",
+    "metric": null,
+    "available": false,
+    "limit": "Données distinctes ou règle de comptage validée nécessaires ; aucun calcul automatique proposé."
+  },
+  {
+    "code": "PIL-09",
+    "label": "Taux de doublons potentiels",
+    "definition": "Enregistrements signalés comme doublons ÷ enregistrements contrôlés × 100",
+    "metric": null,
+    "available": false,
+    "limit": "Données distinctes ou règle de comptage validée nécessaires ; aucun calcul automatique proposé."
+  },
+  {
+    "code": "PIL-10",
+    "label": "Taux de validation",
+    "definition": "Enregistrements validés ÷ enregistrements soumis à validation × 100",
+    "metric": null,
+    "available": false,
+    "limit": "Données distinctes ou règle de comptage validée nécessaires ; aucun calcul automatique proposé."
+  },
+  {
+    "code": "PIL-11",
+    "label": "Dossiers retournés pour correction",
+    "definition": "Nombre de dossiers retournés et motifs associés",
+    "metric": "returned",
+    "available": true,
+    "limit": "Mesure descriptive selon les définitions des cartes correspondantes ; nomenclature et règle officielle à valider."
+  },
+  {
+    "code": "PIL-12",
+    "label": "Retards de mise à jour",
+    "definition": "Dossiers dont les informations n’ont pas été actualisées dans le délai paramétré",
+    "metric": null,
+    "available": false,
+    "limit": "La date du dernier événement judiciaire ne suffit pas à identifier un retard de mise à jour des informations ; définition à valider."
+  }
+]
