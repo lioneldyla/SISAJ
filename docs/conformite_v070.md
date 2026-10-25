@@ -34,6 +34,6 @@ Le script de sauvegarde reconnaît les modules de schéma présents dans la vers
 
 ## Validation et limites
 
-94 tests serveur ont passé, dont 12 nouveaux cas de conformité. Une restauration SQLite isolée a comparé intégralement les 26 tables et redémarré l’application avec ses données. La CI exécute les mêmes parcours avec PostgreSQL 16/18 et les scénarios navigateur ajoutés : audience, état figé et observation de recette. Ces preuves techniques ne constituent pas une validation réelle du greffe.
+97 tests serveur ont passé, dont 15 nouveaux cas de conformité. Une restauration SQLite isolée a comparé intégralement les 26 tables et redémarré l’application avec ses données. La CI exécute les mêmes parcours avec PostgreSQL 16/18 et les scénarios navigateur ajoutés : audience, état figé et observation de recette. Ces preuves techniques ne constituent pas une validation réelle du greffe.
 
 Restent à traiter avec les responsables métier : terminaison judiciaire et stocks historiques, nomenclatures officielles, clé dossier par juridiction, politique de séparation des responsabilités, validation des modèles périodiques, cas historiques contrôlés, sauvegardes planifiées/chiffrées selon la politique retenue, formation et procès-verbal de recette. Aucune date d’orientation absente des 1 500 dossiers n’est inventée. Aucun rôle de décideur institutionnel n’est attribué automatiquement à l’administrateur technique.

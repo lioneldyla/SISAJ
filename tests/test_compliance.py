@@ -113,3 +113,18 @@ def test_incomplete_decision_is_saved_as_draft_but_submission_is_blocked(kind):
   assert any(i['code'] in ('RESULT_CONFLICT','INDIVIDUAL_RESULT') for i in result.json()['issues'])
   assert c.post(f'/cases/{cid}/submit?expected_version=3',headers=h).status_code==422
   assert c.get(f'/cases/{cid}',headers=h).json()['status']=='draft'
+
+@pytest.mark.parametrize('procedure',[{'orientation':'dismissal','orientation_date':'2026-01-20'}, {'orientation':'investigation','orientation_date':'2026-01-15','closure_kind':'total_dismissal','closure_date':'2026-02-01'}, {'orientation':'pending'}])
+def test_alternative_paths_do_not_generate_merits_decisions_or_final_closure(procedure):
+ with TestClient(app) as c:
+  h=context(c);cid=case(c,h,'SYNTH-PATH','A')
+  r={'procedure':procedure,'transnational_state':'undetermined'}
+  assert save(c,h,cid,r,2).status_code==200
+  validate(c,h,cid,3)
+  d=c.get('/dashboard/analysis',headers=h).json()
+  assert next(card for card in d['cards'] if card['key']=='judged')['value']==0
+  assert d['results']==[]
+  report=c.get('/registry/statements',headers=h).json()
+  assert report['stock']['count'] is None and report['throughput_percent'] is None
+  stored=c.get(f'/cases/{cid}/register',headers=h).json()['record']
+  assert stored['decisions']==[] and stored['procedure']['orientation']==procedure['orientation']

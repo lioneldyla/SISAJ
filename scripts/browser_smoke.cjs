@@ -143,7 +143,7 @@ const root=path.resolve(__dirname,'..');
   if(process.env.SISA_SCREENSHOT_DIR){await page.screenshot({path:path.join(process.env.SISA_SCREENSHOT_DIR,'sisa-dashboard.png'),fullPage:true,animations:'disabled'});}
   await page.getByLabel('Intitulé de l’état',{exact:true}).fill('Recette navigateur fictive');
   await page.getByRole('button',{name:'Figer cet état',exact:true}).click();
-  await page.getByText('Recette navigateur fictive',{exact:true}).waitFor();
+  await page.locator('.snapshot-item').filter({hasText:'Recette navigateur fictive'}).waitFor();
   const snapPending=page.waitForEvent('download');
   await page.getByRole('link',{name:'JSON de référence',exact:true}).click();
   const snap=await snapPending;
