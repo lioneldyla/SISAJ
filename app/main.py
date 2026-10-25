@@ -225,7 +225,7 @@ def update_case(case_id:int,x:CaseIn,reason:str,expected_version:int|None=None,u
     if len(reason.strip())<5: raise HTTPException(422,'Motif de correction obligatoire (5 caractères minimum).')
     vals=normalize_case(x); now=utcnow()
     with db(write=True) as c:
-        old=c.execute('SELECT * FROM cases WHERE id=?'+(' FOR UPDATE' if DATABASE_URL else ''),(case_id,)).fetchone()
+        old=locked_case(c,case_id,expected_version)
         if not old: raise HTTPException(404,'Dossier introuvable.')
         if expected_version is not None and old['version'] != expected_version: raise HTTPException(409,'Le dossier a été modifié. Rechargez sa version actuelle.')
         from .registry_models import Register,validate_dates

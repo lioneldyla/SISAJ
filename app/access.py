@@ -18,6 +18,11 @@ def permitted(c,case,u=None):
     return (not p['cabinets'] or r.get('procedure',{}).get('cabinet') in p['cabinets']) and (not p['jurisdictions'] or r.get('jurisdiction_code') in p['jurisdictions'])
 def check(c,case):
     if not permitted(c,case):raise HTTPException(404,'Dossier introuvable dans le périmètre autorisé')
+def check_record(record,u):
+    p=u.get('data_profile')
+    if not p or p['profile']=='technical':return
+    if p['cabinets'] and record.procedure.cabinet not in p['cabinets']:raise HTTPException(403,'Affectation hors du cabinet autorisé')
+    if p['jurisdictions'] and record.jurisdiction_code not in p['jurisdictions']:raise HTTPException(403,'Affectation hors de la juridiction autorisée')
 class Profile(BaseModel):
     profile:str
     cabinets:list[str]=Field(default_factory=list,max_length=100)

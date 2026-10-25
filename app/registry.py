@@ -169,6 +169,8 @@ def install(app,db,locked_case,audit,utcnow,user_from_token,require_roles,safe_c
    if case['status'] not in ('draft','returned'):raise HTTPException(409,'Corriger le dossier avec un motif pour le remettre en brouillon avant modification')
    try:r=validate_dates(x.record,date.fromisoformat(case['date_rp']))
    except ValueError as e:raise HTTPException(422,str(e))
+   from .access import check_record
+   check_record(r,u)
    if r.jurisdiction_code and not c.execute('SELECT code FROM jurisdictions WHERE code=?',(r.jurisdiction_code,)).fetchone():raise HTTPException(422,'Juridiction inconnue')
    before=read_record(c,case).model_dump(mode='json');write_record(c,case_id,r,utcnow(),u['id'])
    audit(c,u['id'],'update','register',case_id,{'reason':x.reason,'before':before,'after':r.model_dump(mode='json'),'version':case['version']+1})

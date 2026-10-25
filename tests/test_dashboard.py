@@ -43,6 +43,11 @@ def test_scoped_profile_is_enforced_on_cards_details_lists_and_exports():
         assert c.get(f'/cases/{a}',headers=uh).status_code==200
         assert c.get(f'/cases/{b}',headers=uh).status_code==404
         assert c.get(f'/cases/{b}/register',headers=uh).status_code==404
+        assert c.get(f'/cases/{b}/legal',headers=uh).status_code==404
+        core={'rp_number':'SYNTH-B','rp_year':2026,'date_rp':'2026-01-01','provenance':'Fictif','category':'Fictif','transnational':False}
+        assert c.post(f'/cases/{b}/corrections',headers=uh,json={'case':core,'reason':'Correction hors périmètre','expected_version':2}).status_code==404
+        record=complete();record['procedure']['cabinet']='Cabinet B'
+        assert c.put(f'/cases/{a}/register',headers=uh,json={'record':record,'reason':'Déplacement hors périmètre','expected_version':2}).status_code==403
         ex=c.get('/dashboard/export.csv',headers=uh);assert 'SYNTH-A' in ex.text and 'SYNTH-B' not in ex.text
         assert c.get('/registry/records.xlsx',headers=uh).status_code==403
         assert c.get('/registry/reports/pdf',headers=uh).status_code==403
