@@ -17,7 +17,7 @@ def headers(username):
 
 
 def preview():
-    assert client.post('/auth/bootstrap', json={'username': 'owner', 'password': PASSWORD}).status_code == 200
+    assert client.post('/auth/bootstrap',headers={'X-SISA-Bootstrap-Key':'Synthetic-Bootstrap-Only-2026!'}, json={'username': 'owner', 'password': PASSWORD}).status_code == 200
     owner = headers('owner')
     assert client.post('/users', headers=owner, json={
         'username': 'other', 'password': PASSWORD, 'role': 'collector'
@@ -65,3 +65,4 @@ def test_owner_expired_preview_is_removed_without_import():
         assert client.get('/cases', headers=owner).json()['total'] == 0
     finally:
         path.unlink(missing_ok=True)
+

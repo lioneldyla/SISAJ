@@ -47,7 +47,7 @@ def integer(v):
  if v is None or str(v).strip()=='':return None
  try:n=Decimal(str(v).replace(' ',''))
  except InvalidOperation:raise ValueError('Effectif entier requis')
- if not n.is_finite() or n<0 or n!=n.to_integral_value():raise ValueError('Effectif entier positif ou nul requis')
+ if not n.is_finite() or not 0<=n<=2147483647 or n!=n.to_integral_value():raise ValueError('Effectif entier positif ou nul requis')
  return int(n)
 
 def money(v):
@@ -58,7 +58,7 @@ def money(v):
  # Floats from Excel are parsed as decimal text, not truncated or silently coerced.
  try:n=Decimal(text)
  except InvalidOperation:raise ValueError('Montant non numérique')
- if not n.is_finite() or n<0 or n.as_tuple().exponent < -2:raise ValueError('Montant invalide ou précision supérieure à 2 décimales')
+ if not n.is_finite() or n<0 or n.adjusted()>39 or n.as_tuple().exponent < -2:raise ValueError('Montant invalide ou précision supérieure à 2 décimales')
  return Money(state='known',value=format(n,'f')).model_dump()
 
 def choice(value,key):
@@ -256,3 +256,4 @@ def preview_package(content):
    sources.append({'sheet':'Registres JSONL','row':n,'cells':raw})
   except (ValueError,KeyError,TypeError,AttributeError) as e:errors.append({'row':n,'errors':[str(e)]})
  return {'date_role':None,'source_sheet':'Registres JSONL','sheets':[{'name':'Registres JSONL','rows':len(lines),'role':'source'}],'coverage':list(coverage.values()),'total_rows':len(lines),'dossier_count':len(items),'items':items,'source_rows':sources,'errors':errors,'warnings':[{'row':None,'message':'Paquet synthétique complet : relations conservées ; tout statut demandé dans le fichier est ignoré. Création en brouillon uniquement.'}],'file_sha256':hashlib.sha256(content).hexdigest()}
+

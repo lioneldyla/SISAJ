@@ -17,7 +17,7 @@ sys.path.insert(0,str(root))
 url=os.environ.get('DATABASE_URL','');parts=urlsplit(url)
 if not (parts.hostname=='127.0.0.1' and parts.port==55432 and parts.path=='/sisa_test' and os.environ.get('SISA_TEST_POSTGRES')=='1'):
     raise SystemExit('Refused: isolated 127.0.0.1:55432/sisa_test and SISA_TEST_POSTGRES=1 required.')
-os.environ.update(SISA_DEPLOYMENT='local',SISA_BOOTSTRAP_KEY='',SISA_SECURE_COOKIE='0')
+os.environ.update(SISA_DEPLOYMENT='local',SISA_BOOTSTRAP_KEY='Synthetic-Restore-Bootstrap-2026!',SISA_SECURE_COOKIE='0')
 from app.main import app
 from fastapi.testclient import TestClient
 with psycopg.connect(url) as c:
@@ -25,7 +25,7 @@ with psycopg.connect(url) as c:
     c.execute('DELETE FROM jurisdictions')
 with TestClient(app) as client:
     password='Synthetic-Pg-Restore-2026!'
-    assert client.post('/auth/bootstrap',json={'username':'restore_admin','password':password}).status_code==200
+    assert client.post('/auth/bootstrap',headers={'X-SISA-Bootstrap-Key':'Synthetic-Restore-Bootstrap-2026!'},json={'username':'restore_admin','password':password}).status_code==200
     headers={'Authorization':'Bearer '+client.post('/auth/login',json={'username':'restore_admin','password':password}).json()['access_token']}
     case=client.post('/cases',headers=headers,json={'rp_number':'SYNTH-RESTORE','rp_year':2026,'date_rp':'2026-01-01','provenance':'Fictif','category':'Fictif','transnational':False}).json()['id']
     assert client.put(f'/cases/{case}/legal',headers=headers,json={'expected_version':1,'reason':'Exercice de restauration','people':[{'reference':'P1','kind':'physical','role':'defendant','display_name':'Fictif'}],'offences':[{'reference':'I1','code':'TEST','label':'Fictif'}],'decisions':[{'reference':'D1','decision_date':'2026-02-01','on_merits':True,'outcomes':[{'person_reference':'P1','offence_reference':'I1','result':'conviction'}]}],'measures':[{'reference':'M1','kind':'fine','measure_date':'2026-02-01','amount':'12.50','currency':'XOF'}]}).status_code==200
@@ -86,3 +86,4 @@ with TestClient(app) as c:
 finally:
     if created:
         with psycopg.connect(url,autocommit=True) as c:c.execute(sql.SQL('DROP DATABASE {}').format(sql.Identifier(restore_name)))
+

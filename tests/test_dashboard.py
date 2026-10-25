@@ -4,7 +4,7 @@ from app.main import app,db
 from tests.test_registry import complete
 
 def context(c):
-    p='Synthetic-Dashboard-2026!';c.post('/auth/bootstrap',json={'username':'dash_admin','password':p})
+    p='Synthetic-Dashboard-2026!';c.post('/auth/bootstrap',headers={'X-SISA-Bootstrap-Key':'Synthetic-Bootstrap-Only-2026!'},json={'username':'dash_admin','password':p})
     return {'Authorization':'Bearer '+c.post('/auth/login',json={'username':'dash_admin','password':p}).json()['access_token']}
 def case(c,h,rp,cabinet,received='2026-01-01'):
     cid=c.post('/cases',headers=h,json={'rp_number':rp,'rp_year':2026,'date_rp':received,'provenance':'Fictif','category':'Catégorie fictive','transnational':False}).json()['id']
@@ -53,3 +53,4 @@ def test_scoped_profile_is_enforced_on_cards_details_lists_and_exports():
         assert c.get('/registry/reports/pdf',headers=uh).status_code==403
         assert c.get('/registry/documents',headers=uh).status_code==403
         assert c.put(f'/users/{uid}/data-profile',headers=uh,json={'profile':'technical'}).status_code==403
+

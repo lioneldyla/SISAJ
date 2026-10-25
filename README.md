@@ -1,3 +1,13 @@
+# SISAJ 0.6.1 — sécurisation des accès et traçabilité des imports
+
+Proposition testée sur la branche de développement ; **cette version n’est pas déployée**. La démonstration existante répondait en version **0.6.0** le 25 octobre 2026 ; aucun compte ni dossier distant n’a été modifié pendant cet incrément.
+
+Le provisionnement HTTP exige une clé dans tous les modes ; une commande opérateur locale est fournie. La limitation des connexions couvre désormais le compte indépendamment de l’adresse et l’adresse indépendamment du compte, avec réservation transactionnelle et audit des refus. L’import simplifié conserve l’original byte pour byte, SHA-256, feuille, ligne physique, colonnes et dossier cible, dans la même transaction que le lot. Le registre PPEF existant est conservé.
+
+Voir [la validation technique et les limites 0.6.1](docs/validation_v061.md). Les sections ci-dessous décrivent aussi les livraisons historiques ; elles ne prouvent pas le déploiement de la proposition 0.6.1.
+
+---
+
 # SISAJ v0.5 — registre PPEF complet et pilotage
 
 Système de gestion et d’analyse PPEF : interface française responsive, API FastAPI et stockage PostgreSQL sur Render. Évolution du socle v0.2 hybride fourni, conservant les parcours métier existants et le mode local SQLite.
@@ -56,7 +66,7 @@ python3 -m venv .venv
 SISA_DB_PATH="$PWD/data/synthetic.db" SISA_BACKUP_DIR="$PWD/backups" .venv/bin/python -m uvicorn app.main:app --host 127.0.0.1 --port 8000
 ```
 
-Ouvrir l’application dans le navigateur. Au premier accès, créer un administrateur nominatif avec un mot de passe d’au moins 14 caractères. Créer ensuite les comptes agents/superviseurs dans Utilisateurs. Le modèle CSV est téléchargeable dans Imports ; il contient deux dossiers fictifs. Une base vide est normale : aucun utilisateur ni faux chiffre n’est injecté automatiquement.
+Ouvrir l’application dans le navigateur. Avant le premier démarrage, exécuter `.venv/bin/python scripts/provision_admin.py IDENTIFIANT` sur l’hôte local autorisé : le mot de passe est demandé sans affichage. L’initialisation HTTP exige désormais une clé `SISA_BOOTSTRAP_KEY` non vide, en local comme sur Render. Créer ensuite les comptes agents/superviseurs dans Utilisateurs. Le modèle CSV est téléchargeable dans Imports ; il contient deux dossiers fictifs. Une base vide est normale : aucun utilisateur ni faux chiffre n’est injecté automatiquement.
 
 En local, `DATABASE_URL` permet de choisir PostgreSQL ; sans cette variable, SQLite est conservé. Sur Render (`SISA_DEPLOYMENT=render`), PostgreSQL et la clé d’initialisation sont obligatoires pour les opérations concernées ; le service refuse tout repli SQLite. La version cloud refuse `SISA_DATA_MODE` différent de `synthetic` ; ce garde-fou ne remplace pas une classification des fichiers par un humain.
 
@@ -74,3 +84,4 @@ SISA_TEST_PYTHON="$PWD/.venv/bin/python" npm run test:e2e
 Node et Playwright servent uniquement aux tests navigateur ; aucun build JavaScript ni service Node n’est nécessaire en production. Si Chromium est installé séparément, définir `SISA_CHROMIUM_PATH`. Les deux suites Python sont exécutées dans des processus distincts car chaque application possède un module `app.main`.
 
 Voir [le bilan v0.3](docs/validation_plateforme_render.md), [la conception](docs/plateforme_render.md), [les limites et prochaines étapes](docs/roadmap.md) et [l’audit initial v0.2](docs/audit_initial_sisa.md). Les rapports v0.2 décrivent l’état antérieur et ne remplacent pas le bilan v0.3.
+

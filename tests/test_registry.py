@@ -13,7 +13,7 @@ PASSWORD='Synthetic-Complete-2026!'
 @pytest.fixture
 def context():
  with TestClient(app) as c:
-  c.post('/auth/bootstrap',json={'username':'register_admin','password':PASSWORD})
+  c.post('/auth/bootstrap',headers={'X-SISA-Bootstrap-Key':'Synthetic-Bootstrap-Only-2026!'},json={'username':'register_admin','password':PASSWORD})
   h={'Authorization':'Bearer '+c.post('/auth/login',json={'username':'register_admin','password':PASSWORD}).json()['access_token']}
   core={'rp_number':'SYNTH-REGISTER','rp_year':2026,'date_rp':'2026-01-10','provenance':'Unité fictive','category':'Qualification fictive','transnational':False}
   cid=c.post('/cases',headers=h,json=core).json()['id']
@@ -259,3 +259,4 @@ def test_exact_result_labels_keep_their_declared_meaning(label,expected):
  from app.ppef_import import convert
  item=convert({'rp_number':'SYNTH-EXACT','date_rp':'2026-01-01','decision_content':label,'decision_number':'D1','decision_date':'2026-02-01'},2)
  assert item['record']['decisions'][0]['result']==expected
+

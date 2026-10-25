@@ -9,7 +9,7 @@ else:
     if target.hostname != '127.0.0.1' or target.port != 55432 or target.path != '/sisa_test':
         raise RuntimeError('Only the isolated loopback sisa_test database is permitted.')
 os.environ['SISA_DEPLOYMENT'] = 'local'
-os.environ['SISA_BOOTSTRAP_KEY'] = ''
+os.environ['SISA_BOOTSTRAP_KEY'] = 'Synthetic-Bootstrap-Only-2026!'
 os.environ['SISA_SECURE_COOKIE'] = '0'
 _tmp = tempfile.TemporaryDirectory(prefix='sisa-tests-')
 os.environ['SISA_DB_PATH'] = str(Path(_tmp.name) / 'test.db')
@@ -28,6 +28,8 @@ def reset_test_database():
         Path(str(DB_PATH)+suffix).unlink(missing_ok=True)
     with db() as c:
         c.executescript(SCHEMA)
+        from app.import_provenance import DDL
+        c.executescript(DDL)
         from app.legal import SCHEMA as LEGAL_SCHEMA
         c.executescript(LEGAL_SCHEMA)
         from app.registry import SCHEMA as REGISTRY_SCHEMA
@@ -41,3 +43,4 @@ def reset_test_database():
         c.execute('DELETE FROM reference_documents')
         c.execute('DELETE FROM jurisdictions')
         c.execute("INSERT OR IGNORE INTO indicator_definitions VALUES ('received_cases','Dossiers reçus','dossier distinct','date RP','draft-v0.2',0)")
+

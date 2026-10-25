@@ -4,7 +4,7 @@ from app.main import app
 client=TestClient(app)
 
 def bootstrap_and_login():
-    r=client.post('/auth/bootstrap',json={'username':'admin1','password':'Correct-Horse-Battery-2026!'})
+    r=client.post('/auth/bootstrap',headers={'X-SISA-Bootstrap-Key':'Synthetic-Bootstrap-Only-2026!'},json={'username':'admin1','password':'Correct-Horse-Battery-2026!'})
     assert r.status_code==200, r.text
     r=client.post('/auth/login',json={'username':'admin1','password':'Correct-Horse-Battery-2026!'})
     assert r.status_code==200
@@ -16,7 +16,7 @@ def test_health_no_cloud_or_external_ai():
 
 def test_bootstrap_auth_rbac_and_workflow():
     h=bootstrap_and_login()
-    assert client.post('/auth/bootstrap',json={'username':'second','password':'Correct-Horse-Battery-2026!'}).status_code==409
+    assert client.post('/auth/bootstrap',headers={'X-SISA-Bootstrap-Key':'Synthetic-Bootstrap-Only-2026!'},json={'username':'second','password':'Correct-Horse-Battery-2026!'}).status_code==409
     assert client.post('/users',headers=h,json={'username':'agent1','password':'Agent-Strong-Password-2026!','role':'collector'}).status_code==200
     assert client.post('/users',headers=h,json={'username':'chef1','password':'Supervisor-Strong-2026!','role':'supervisor'}).status_code==200
     data={'rp_number':'RP-TEST-001','rp_year':2026,'date_rp':'2026-10-01','ri_number':'RI-TEST-001','provenance':'OPJ fictif','transnational':False,'category':'corruption fictive','person_physical_count':1,'person_legal_count':0}
@@ -71,3 +71,4 @@ def test_ppef_source_workbook_mapping_synthetic():
     data=r.json(); assert data['source_sheet']=='AUDIENCES PENALES' and data['can_confirm'] is True
     assert data['sample'][0]['rp_year']==2026 and data['sample'][0]['transnational']==0
     done=client.post('/imports/'+data['preview_id']+'/confirm',headers=h); assert done.status_code==200,done.text
+

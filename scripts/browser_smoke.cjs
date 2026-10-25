@@ -7,12 +7,13 @@ const path=require('node:path');
 const assert=require('node:assert/strict');
 const root=path.resolve(__dirname,'..');
 (async()=>{
+ const bootstrapKey=require('node:crypto').randomBytes(32).toString('hex');
  const temp=fs.mkdtempSync(path.join(os.tmpdir(),'sisa-browser-'));
  const port=process.env.SISA_TEST_PORT||'8877';
  const python=process.env.SISA_TEST_PYTHON||'python';
  const base=`http://127.0.0.1:${port}`;
  const logs=fs.openSync(path.join(temp,'server.log'),'w');
- const server=spawn(python,['-m','uvicorn','app.main:app','--host','127.0.0.1','--port',port],{cwd:root,env:{...process.env,DATABASE_URL:'',SISA_DEPLOYMENT:'local',SISA_BOOTSTRAP_KEY:'',SISA_SECURE_COOKIE:'0',SISA_DB_PATH:path.join(temp,'synthetic.db'),SISA_BACKUP_DIR:path.join(temp,'backups')},stdio:['ignore',logs,logs]});
+ const server=spawn(python,['-m','uvicorn','app.main:app','--host','127.0.0.1','--port',port],{cwd:root,env:{...process.env,DATABASE_URL:'',SISA_DEPLOYMENT:'local',SISA_BOOTSTRAP_KEY:bootstrapKey,SISA_SECURE_COOKIE:'0',SISA_DB_PATH:path.join(temp,'synthetic.db'),SISA_BACKUP_DIR:path.join(temp,'backups')},stdio:['ignore',logs,logs]});
  let browser;
  try {
   let ready=false;
@@ -25,6 +26,7 @@ const root=path.resolve(__dirname,'..');
   await page.getByRole('heading',{name:'Initialiser votre plateforme'}).waitFor();
   await page.getByLabel('Identifiant nominatif',{exact:true}).fill('demo_admin');
   await page.getByLabel('Mot de passe',{exact:true}).fill('Synthetic-Browser-2026!');
+  await page.locator('input[name="bootstrapKey"]').fill(bootstrapKey);
   await page.getByRole('button',{name:'Créer mon compte administrateur'}).click();
   await page.getByRole('heading',{name:'Vue d’ensemble',exact:true}).waitFor();
   await page.getByRole('button',{name:'Nouveau dossier',exact:true}).click();
@@ -133,3 +135,4 @@ const root=path.resolve(__dirname,'..');
   fs.closeSync(logs);fs.rmSync(temp,{recursive:true,force:true});
  }
 })().catch(e=>{console.error(e.message);process.exitCode=1;});
+

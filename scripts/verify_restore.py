@@ -16,12 +16,12 @@ sys.path.insert(0,str(root))
 with tempfile.TemporaryDirectory(prefix='sisaj-restore-') as tmp:
     path=Path(tmp);source=path/'source'/'source.db';target=path/'restore'/'restored.db';backups=path/'backups'
     target.parent.mkdir()
-    os.environ.update(DATABASE_URL='',SISA_DEPLOYMENT='local',SISA_BOOTSTRAP_KEY='',SISA_SECURE_COOKIE='0',SISA_DB_PATH=str(source),SISA_BACKUP_DIR=str(backups))
+    os.environ.update(DATABASE_URL='',SISA_DEPLOYMENT='local',SISA_BOOTSTRAP_KEY='Synthetic-Restore-Bootstrap-2026!',SISA_SECURE_COOKIE='0',SISA_DB_PATH=str(source),SISA_BACKUP_DIR=str(backups))
     from fastapi.testclient import TestClient
     from app.main import app
     with TestClient(app) as c:
         password='Synthetic-Restore-2026!'
-        assert c.post('/auth/bootstrap',json={'username':'restore_admin','password':password}).status_code==200
+        assert c.post('/auth/bootstrap',headers={'X-SISA-Bootstrap-Key':'Synthetic-Restore-Bootstrap-2026!'},json={'username':'restore_admin','password':password}).status_code==200
         h={'Authorization':'Bearer '+c.post('/auth/login',json={'username':'restore_admin','password':password}).json()['access_token']}
         cid=c.post('/cases',headers=h,json={'rp_number':'SYNTH-RESTORE','rp_year':2026,'date_rp':'2026-01-01','category':'Test fictif','provenance':'Test fictif','transnational':False}).json()['id']
         assert c.put(f'/cases/{cid}/legal',headers=h,json={'expected_version':1,'reason':'Exercice de restauration','people':[{'reference':'P1','kind':'physical','role':'defendant','display_name':'Personne fictive'}],'offences':[{'reference':'I1','code':'TEST','label':'Fictif'}],'decisions':[{'reference':'D1','decision_date':'2026-02-01','on_merits':True,'outcomes':[{'person_reference':'P1','offence_reference':'I1','result':'conviction'}]}],'measures':[{'reference':'M1','kind':'fine','measure_date':'2026-02-01','amount':'1200.50','currency':'XOF'}]}).status_code==200
@@ -73,3 +73,4 @@ with TestClient(app) as c:
         print(f'SQLite snapshot restored into a new database; {len(tables)} tables compared completely; integrity and foreign keys valid.')
         print('Archive SHA256:',backup['sha256'])
         print('Scope: isolated local synthetic exercise; no Render/PostgreSQL restore claimed.')
+

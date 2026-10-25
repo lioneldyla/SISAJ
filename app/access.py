@@ -46,7 +46,7 @@ def install(app,db,audit,utcnow,require_roles):
         if token:
             with db() as c:
                 r=c.execute('SELECT u.id,u.role,u.active,s.expires_at FROM sessions s JOIN users u ON u.id=s.user_id WHERE s.token_hash=?',(hashlib.sha256(token.encode()).hexdigest(),)).fetchone()
-                if r and r['active'] and r['expires_at']>=int(time.time()):u=augment(c,dict(r))
+                if r and r['active'] and r['expires_at']>int(time.time()):u=augment(c,dict(r))
         handle=principal.set(u)
         try:
             p=u.get('data_profile') if u else None;path=request.url.path
@@ -59,3 +59,4 @@ def install(app,db,audit,utcnow,require_roles):
                 if scoped and request.method=='POST' and path=='/cases':return JSONResponse({'detail':'Affectation initiale d’un nouveau dossier par le responsable global requise.'},status_code=403)
             return await call_next(request)
         finally:principal.reset(handle)
+

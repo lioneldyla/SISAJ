@@ -17,11 +17,9 @@ name='sisa_pre_transfer_'+datetime.now(timezone.utc).strftime('%Y%m%d_%H%M%S')
 with psycopg.connect(target,autocommit=True) as admin:
     admin.execute(sql.SQL('CREATE DATABASE {}').format(sql.Identifier(name)))
 dstinfo['dbname']=name
-schema=[]
-for path in ('app/main.py','app/legal.py','app/registry.py'):
-    tree=ast.parse(Path(path).read_text())
-    node=next(n for n in tree.body if isinstance(n,ast.Assign) and any(isinstance(t,ast.Name) and t.id=='SCHEMA' for t in n.targets))
-    schema.append(re.sub(r'\bid INTEGER PRIMARY KEY\b','id SERIAL PRIMARY KEY',ast.literal_eval(node.value)))
+from backup_schema import inventory,check_tables
+schema,declared_tables=inventory(Path('.'))
+os.umask(0o077)
 archive=Path('/tmp')/(name+'.zip');proof={'source_read_only':True,'target_database':name,'tables':{},'verified':False}
 def table_bytes(c,table):
     buf=io.BytesIO()
@@ -34,7 +32,7 @@ def canonical(c,table):
 with psycopg.connect(source) as src,psycopg.connect(**dstinfo) as dst,zipfile.ZipFile(archive,'w',zipfile.ZIP_DEFLATED) as z:
     src.execute('SET TRANSACTION ISOLATION LEVEL REPEATABLE READ READ ONLY')
     tables=[r[0] for r in src.execute("SELECT tablename FROM pg_tables WHERE schemaname='public' ORDER BY tablename").fetchall()]
-    assert len(tables)==21,'Review changed deployed schema before backup'
+    check_tables(tables,declared_tables)
     ddl='\n'.join(schema);z.writestr('schema.sql',ddl)
     for script in schema:
         for statement in script.split(';'):

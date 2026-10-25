@@ -47,7 +47,7 @@ jobs:
         with:
           python-version: '3.12'
       - run: python -m pip install -r requirements-dev.txt -c docs/platform_constraints.txt
-      - run: python -m pytest -q tests/test_app.py tests/test_platform.py tests/test_legal.py tests/test_registry.py tests/test_transfer.py tests/test_dashboard.py -k 'not backup'
+      - run: python -m pytest -q tests/test_app.py tests/test_platform.py tests/test_legal.py tests/test_registry.py tests/test_transfer.py tests/test_dashboard.py tests/test_hardening_v061.py -k 'not backup'
         env:
           SISA_TEST_POSTGRES: '1'
           DATABASE_URL: postgresql://sisa:synthetic-ci-only@127.0.0.1:55432/sisa_test
@@ -56,3 +56,4 @@ jobs:
           SISA_TEST_PG_CONTAINER: ${{ job.services.postgres.id }}
           SISA_TEST_POSTGRES: '1'
           DATABASE_URL: postgresql://sisa:synthetic-ci-only@127.0.0.1:55432/sisa_test
+
