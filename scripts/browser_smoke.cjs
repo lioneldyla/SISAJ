@@ -34,6 +34,7 @@ const root=path.resolve(__dirname,'..');
   await page.getByLabel('Unité de provenance *',{exact:true}).fill('Unité fictive');
   await page.getByLabel('Catégorie / qualification source *',{exact:true}).fill('Corruption fictive');
   await page.getByRole('button',{name:'Enregistrer',exact:true}).click();
+  await page.locator('#dashboard-records > summary').click();
   await page.getByRole('button',{name:'SYNTH-UI-001',exact:true}).click();
   await page.getByRole('button',{name:'Consulter le contenu juridique'}).click();
   await page.locator('[data-field="procedure.orientation"]').selectOption('prosecution');
