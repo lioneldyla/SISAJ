@@ -104,16 +104,12 @@ const root=path.resolve(__dirname,'..');
   await page.getByRole('button',{name:'Confirmer la reprise de 1 dossier(s)'}).click();
   await page.getByRole('cell',{name:'synthetic.csv',exact:true}).first().waitFor();
   await page.locator('nav').getByRole('link',{name:'Pilotage & rapports',exact:true}).click();
-  await page.locator('#stats-result .metric-value').first().waitFor();
-  assert.equal(await page.locator('#stats-result .metric-value').first().innerText(),'1');
-  for(const [type,signature] of [['PDF','%PDF-'],['XLSX','PK'],['XLSX registre','PK'],['JSON','{']]){
-   const row=page.locator('.export-option').filter({has:page.locator('.export-type',{hasText:new RegExp('^'+type+'$')})});
-   const pending=page.waitForEvent('download');await row.getByRole('button').click();const file=await pending;
-   const buffer=fs.readFileSync(await file.path());assert(buffer.subarray(0,signature.length).toString()===signature);
-  }
-  for(const tab of ['content','delays','workload','money','quality','forecast']){await page.locator('[data-statement="'+tab+'"]').click();assert(await page.locator('#stats-result').innerText());}
-  await page.locator('[data-statement="activity"]').click();
-  if(process.env.SISA_SCREENSHOT_DIR){fs.mkdirSync(process.env.SISA_SCREENSHOT_DIR,{recursive:true});await page.screenshot({path:path.join(process.env.SISA_SCREENSHOT_DIR,'sisa-legal-statistics.png'),fullPage:true,animations:'disabled'});}
+  await page.locator('#dashboard-content .metric-value').first().waitFor();
+  assert.equal(await page.locator('#dashboard-content .metric-value').first().innerText(),'2');
+  for(const tab of ['cases','decisions','people','money','delays','quality','summary']){await page.locator('[data-dashboard-tab="'+tab+'"]').click();assert(await page.locator('#dashboard-content').innerText());}
+  const downloadPending=page.waitForEvent('download');await page.locator('#dashboard-export').click();const exported=await downloadPending;assert(fs.readFileSync(await exported.path(),'utf8').includes('Filtres'));
+  for(const [url,signature] of [['/registry/reports/pdf','%PDF-'],['/registry/reports/xlsx','PK'],['/registry/records.xlsx','PK'],['/registry/export.json','{']]){const response=await page.request.get(base+url);assert(response.ok());assert((await response.body()).subarray(0,signature.length).toString()===signature);}
+  if(process.env.SISA_SCREENSHOT_DIR){await page.screenshot({path:path.join(process.env.SISA_SCREENSHOT_DIR,'sisa-dashboard.png'),fullPage:true,animations:'disabled'});}
   await page.locator('nav').getByRole('link',{name:'Journal d’audit',exact:true}).click();
   await page.getByRole('heading',{name:'Dernières opérations'}).waitFor();
   await page.locator('nav').getByRole('link',{name:'Vue d’ensemble',exact:true}).click();
