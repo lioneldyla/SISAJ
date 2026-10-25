@@ -29,7 +29,7 @@ if CLOUD and os.getenv('SISA_DATA_MODE', 'synthetic') != 'synthetic':
     raise RuntimeError('Cette version cloud est réservée aux données synthétiques.')
 SECURE_COOKIE = os.getenv('SISA_SECURE_COOKIE', '1' if CLOUD else '0') == '1'
 SESSION_TTL = 8 * 60 * 60
-app = FastAPI(title='SISA — Système intelligent de suivi et d’analyse judiciaire', version='0.5.1', description='MVP local-first. Données synthétiques uniquement jusqu’à validation institutionnelle.')
+app = FastAPI(title='SISA — Système intelligent de suivi et d’analyse judiciaire', version='0.6.0', description='MVP local-first. Données synthétiques uniquement jusqu’à validation institutionnelle.')
 
 SCHEMA = '''
 PRAGMA foreign_keys=ON;
@@ -72,6 +72,8 @@ def locked_case(c, case_id, expected_version=None):
     row = c.execute('SELECT * FROM cases WHERE id=?' + (' FOR UPDATE' if DATABASE_URL else ''), (case_id,)).fetchone()
     if not row:
         raise HTTPException(404, 'Dossier introuvable.')
+    from .access import check
+    check(c,dict(row))
     if expected_version is not None and row['version'] != expected_version:
         raise HTTPException(409, 'Le dossier a été modifié. Rechargez sa version actuelle.')
     return row
@@ -97,7 +99,8 @@ def user_from_token(request: Request, authorization: Optional[str]=Header(defaul
     with db() as c:
         row=c.execute('SELECT u.id,u.username,u.role,u.active,s.expires_at FROM sessions s JOIN users u ON u.id=s.user_id WHERE s.token_hash=?',(th,)).fetchone()
     if not row or not row['active'] or row['expires_at']<int(time.time()): raise HTTPException(401,'Session invalide ou expirée.')
-    return dict(row)
+    from .access import augment
+    with db() as c:return augment(c,dict(row))
 def require_roles(*roles):
     def dep(u=Depends(user_from_token)):
         if u['role'] not in roles: raise HTTPException(403,'Droits insuffisants.')
@@ -115,7 +118,7 @@ class ReturnIn(BaseModel):
 class UserIn(BaseModel): username: str=Field(min_length=3,max_length=80); password: str=Field(min_length=14,max_length=200); role: str
 
 @app.get('/health')
-def health(): return {'status':'ok','app':'SISA','version':'0.5.1','mode':'render-synthetic' if CLOUD else 'local-first','cloud_sync':'disabled','external_ai':'disabled'}
+def health(): return {'status':'ok','app':'SISA','version':'0.6.0','mode':'render-synthetic' if CLOUD else 'local-first','cloud_sync':'disabled','external_ai':'disabled'}
 @app.post('/auth/bootstrap')
 def bootstrap(x: BootstrapIn, x_sisa_bootstrap_key: Optional[str]=Header(default=None)):
     key = os.getenv('SISA_BOOTSTRAP_KEY', '')
@@ -148,7 +151,7 @@ def login(x: LoginIn, request: Request, response: Response):
     response.set_cookie('sisa_session', token, httponly=True, secure=SECURE_COOKIE, samesite='strict', max_age=SESSION_TTL, path='/')
     return {'access_token':token,'token_type':'bearer','expires_in':SESSION_TTL,'role':u['role']}
 @app.get('/auth/me')
-def me(u=Depends(user_from_token)): return {'id':u['id'],'username':u['username'],'role':u['role']}
+def me(u=Depends(user_from_token)): return {'id':u['id'],'username':u['username'],'role':u['role'],'data_profile':u.get('data_profile')}
 @app.post('/auth/logout')
 def logout(request: Request, response: Response, u=Depends(user_from_token), authorization: Optional[str]=Header(default=None)):
     token = authorization[7:].strip() if authorization else request.cookies.get('sisa_session', '')
@@ -200,12 +203,16 @@ def list_cases(q: str|None=None, year: int|None=None, start: date|None=None, end
         if status not in ('draft','submitted','returned','validated'): raise HTTPException(422,'Statut invalide.')
         where.append('status=?'); args.append(status)
     sql='SELECT id,rp_number,rp_year,date_rp,ri_number,provenance,transnational,category,person_physical_count,person_legal_count,status,version,created_at,updated_at FROM cases'+(' WHERE '+' AND '.join(where) if where else '')+' ORDER BY date_rp DESC,id DESC LIMIT ? OFFSET ?'; args += [limit,offset]
-    with db() as c: rows=c.execute(sql,args).fetchall(); total=c.execute('SELECT COUNT(*) n FROM cases'+(' WHERE '+' AND '.join(where) if where else ''),args[:-2]).fetchone()['n']
+    with db() as c:
+        from .access import permitted
+        all_rows=c.execute(sql.replace(' LIMIT ? OFFSET ?',''),args[:-2]).fetchall()
+        allowed=[r for r in all_rows if permitted(c,dict(r),u)]
+        total=len(allowed);rows=allowed[offset:offset+limit]
     return {'total':total,'limit':limit,'offset':offset,'items':[dict(r) for r in rows]}
 @app.get('/cases/{case_id}')
 def get_case(case_id:int,u=Depends(user_from_token)):
     with db() as c:
-        row=c.execute('SELECT * FROM cases WHERE id=?',(case_id,)).fetchone()
+        row=locked_case(c,case_id)
         if not row: raise HTTPException(404,'Dossier introuvable.')
         events=c.execute('SELECT * FROM case_events WHERE case_id=? ORDER BY event_date,id',(case_id,)).fetchall()
         reg=c.execute('SELECT payload FROM registry_records WHERE case_id=?',(case_id,)).fetchone()
@@ -218,7 +225,7 @@ def update_case(case_id:int,x:CaseIn,reason:str,expected_version:int|None=None,u
     if len(reason.strip())<5: raise HTTPException(422,'Motif de correction obligatoire (5 caractères minimum).')
     vals=normalize_case(x); now=utcnow()
     with db(write=True) as c:
-        old=c.execute('SELECT * FROM cases WHERE id=?'+(' FOR UPDATE' if DATABASE_URL else ''),(case_id,)).fetchone()
+        old=locked_case(c,case_id,expected_version)
         if not old: raise HTTPException(404,'Dossier introuvable.')
         if expected_version is not None and old['version'] != expected_version: raise HTTPException(409,'Le dossier a été modifié. Rechargez sa version actuelle.')
         from .registry_models import Register,validate_dates
@@ -541,7 +548,7 @@ def ready():
 @app.get('/platform/config')
 def platform_config():
     with db() as c: count = c.execute('SELECT COUNT(*) n FROM users').fetchone()['n']
-    return {'initialized':bool(count),'version':'0.5.1','deployment':'Render' if CLOUD else 'Local',
+    return {'initialized':bool(count),'version':'0.6.0','deployment':'Render' if CLOUD else 'Local',
             'data_mode':'synthetic','bootstrap_key_required':bool(os.getenv('SISA_BOOTSTRAP_KEY')) or CLOUD,
             'official_indicators':False,'external_ai':False,'public_publication':False}
 
@@ -618,7 +625,7 @@ def export_xlsx(u=Depends(require_roles('admin','supervisor'))):
     for row in rows: ws.append([safe_spreadsheet_cell(row[k]) for k in fields])
     ws.freeze_panes='A2'; ws.auto_filter.ref=ws.dimensions
     meta=wb.create_sheet('Méthode'); meta.append(['SISA','Export de dossiers — tous statuts'])
-    for pair in [('Auteur',u['username']),('Date UTC',utcnow()),('Version','0.5.1'),('Méthode','Provisoire, non officielle'),('Données','Synthétiques uniquement')]: meta.append(pair)
+    for pair in [('Auteur',u['username']),('Date UTC',utcnow()),('Version','0.6.0'),('Méthode','Provisoire, non officielle'),('Données','Synthétiques uniquement')]: meta.append(pair)
     buf=io.BytesIO(); wb.save(buf); buf.seek(0)
     return StreamingResponse(buf,media_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',headers={'Content-Disposition':'attachment; filename="sisa_dossiers.xlsx"'})
 
@@ -633,7 +640,7 @@ def report_pdf(start:date|None=None,end:date|None=None,jurisdiction:str|None=Non
     y=790
     lines=['SISA / PPEF','Rapport statistique provisoire - donnees synthetiques',
            f"Periode : {start or 'toutes dates'} au {end or 'toutes dates'}",
-           f"Auteur : {u['username']} | UTC : {utcnow()}",'Version : 0.5.1 | Methode : draft-v0.2-not-approved',
+           f"Auteur : {u['username']} | UTC : {utcnow()}",'Version : 0.6.0 | Methode : draft-v0.2-not-approved',
            f"Juridiction : {jurisdiction or 'Toutes'}",'Population : dossiers valides uniquement',f"Dossiers recus : {result['received_cases']}",
            f"Dossiers transnationaux : {result['transnational_cases']}",'Ventilation par categorie :']
     lines += [f"{r['category']} : {r['n']}" for r in result['by_category']]
@@ -650,7 +657,7 @@ def report_pdf(start:date|None=None,end:date|None=None,jurisdiction:str|None=Non
 def operations(u=Depends(require_roles('admin'))):
     return {'database':'PostgreSQL' if DATABASE_URL else 'SQLite','backup_mode':'Sauvegardes gerees Render + export pg_dump' if DATABASE_URL else 'Copie SQLite manuelle',
             'restore_validated':False,'real_data_authorized':False,'external_ai':False,
-            'version':'0.5.1','retention_policy':'A faire approuver','public_publication':False}
+            'version':'0.6.0','retention_policy':'A faire approuver','public_publication':False}
 
 @app.get('/examples/template.csv')
 def template_csv(u=Depends(user_from_token)):
@@ -672,3 +679,12 @@ install_legal(app, db, locked_case, audit, utcnow, user_from_token, require_role
 
 from .registry import install as install_registry
 install_registry(app,db,locked_case,audit,utcnow,user_from_token,require_roles,safe_spreadsheet_cell)
+
+from .transfer import install as install_transfer
+install_transfer(app,db,audit,utcnow,user_from_token,require_roles)
+
+from .dashboard import install as install_dashboard
+install_dashboard(app,db,audit,utcnow,user_from_token,require_roles,safe_spreadsheet_cell)
+
+from .access import install as install_access
+install_access(app,db,audit,utcnow,require_roles)

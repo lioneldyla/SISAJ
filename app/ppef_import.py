@@ -118,6 +118,7 @@ def convert(raw,line):
 
 
 def preview(filename,content,sheet=None,date_role=None):
+ if filename.lower().endswith('.jsonl'):return preview_package(content)
  coverage=[];warnings=[];errors=[];sheets=[];source_rows=[]
  if filename.lower().endswith('.csv'):
   reader=csv.reader(io.StringIO(content.decode('utf-8-sig')));rows=list(reader)
@@ -232,3 +233,26 @@ def preview(filename,content,sheet=None,date_role=None):
  if not rows:warnings.append({'row':None,'message':'Modèle reconnu mais aucune ligne source renseignée ; aucun dossier fictif ne sera créé'})
  if date_role=='rp' and title=='Feuil1':warnings.append({'row':None,'message':'Choix explicite : Date de Feuil1 interprétée comme Date RP ; vérifier cette convention avant confirmation'})
  return {'date_role':date_role,'source_sheet':title,'sheets':sheets,'coverage':coverage,'total_rows':len(rows),'dossier_count':len(items),'items':items,'source_rows':source_rows,'errors':errors,'warnings':warnings,'file_sha256':hashlib.sha256(content).hexdigest()}
+
+def preview_package(content):
+ """Typed synthetic package: preserve relationships, ignore requested workflow status."""
+ from .main import CaseIn
+ lines=[line for line in content.decode('utf-8-sig').splitlines() if line.strip()]
+ if len(lines)>10000:raise ValueError('Maximum 10 000 dossiers')
+ items=[];sources=[];errors=[];seen=set();coverage={}
+ for n,line in enumerate(lines,1):
+  try:
+   raw=json.loads(line)
+   if raw.get('synthetic') is not True:raise ValueError('Paquet réservé aux données explicitement synthétiques')
+   core=CaseIn.model_validate(raw['core']).model_dump(mode='json')
+   if core['rp_year']!=date.fromisoformat(core['date_rp']).year:raise ValueError('Année RP différente de Date RP')
+   key=(core['rp_number'].casefold(),core['rp_year'])
+   if key in seen:raise ValueError('RP/année répété dans le paquet ; aucun rapprochement automatique')
+   seen.add(key)
+   record=validate_dates(Register.model_validate(raw['record']),date.fromisoformat(core['date_rp']))
+   for prefix,obj in [('core',core),('record',record.model_dump(mode='json'))]:
+    for k in obj:coverage[prefix+'.'+k]={'column':prefix+'.'+k,'destination':k,'handling':'mapped'}
+   items.append({'core':core,'record':record.model_dump(mode='json'),'source_rows':[n]})
+   sources.append({'sheet':'Registres JSONL','row':n,'cells':raw})
+  except (ValueError,KeyError,TypeError,AttributeError) as e:errors.append({'row':n,'errors':[str(e)]})
+ return {'date_role':None,'source_sheet':'Registres JSONL','sheets':[{'name':'Registres JSONL','rows':len(lines),'role':'source'}],'coverage':list(coverage.values()),'total_rows':len(lines),'dossier_count':len(items),'items':items,'source_rows':sources,'errors':errors,'warnings':[{'row':None,'message':'Paquet synthétique complet : relations conservées ; tout statut demandé dans le fichier est ignoré. Création en brouillon uniquement.'}],'file_sha256':hashlib.sha256(content).hexdigest()}

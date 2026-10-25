@@ -169,6 +169,8 @@ def install(app,db,locked_case,audit,utcnow,user_from_token,require_roles,safe_c
    if case['status'] not in ('draft','returned'):raise HTTPException(409,'Corriger le dossier avec un motif pour le remettre en brouillon avant modification')
    try:r=validate_dates(x.record,date.fromisoformat(case['date_rp']))
    except ValueError as e:raise HTTPException(422,str(e))
+   from .access import check_record
+   check_record(r,u)
    if r.jurisdiction_code and not c.execute('SELECT code FROM jurisdictions WHERE code=?',(r.jurisdiction_code,)).fetchone():raise HTTPException(422,'Juridiction inconnue')
    before=read_record(c,case).model_dump(mode='json');write_record(c,case_id,r,utcnow(),u['id'])
    audit(c,u['id'],'update','register',case_id,{'reason':x.reason,'before':before,'after':r.model_dump(mode='json'),'version':case['version']+1})
@@ -204,6 +206,8 @@ def install(app,db,locked_case,audit,utcnow,user_from_token,require_roles,safe_c
    if DATABASE_URL:c.execute('SELECT pg_advisory_xact_lock(731026)')
    for item in r['items']:
     if c.execute('SELECT id FROM cases WHERE LOWER(rp_number)=? AND rp_year=?',(item['core']['rp_number'].lower(),item['core']['rp_year'])).fetchone():raise HTTPException(409,'Un dossier du lot existe désormais ; aucune ligne importée, refaire le contrôle.')
+    jurisdiction=item['record'].get('jurisdiction_code')
+    if jurisdiction and not c.execute('SELECT code FROM jurisdictions WHERE code=?',(jurisdiction,)).fetchone():raise HTTPException(422,'Juridiction inconnue dans le lot ; compléter le référentiel avant reprise')
    bid=str(uuid.uuid4());now=utcnow()
    c.execute('INSERT INTO registry_batches VALUES (?,?,?,?,?,?,?)',(bid,u['id'],now,payload['filename'],r['file_sha256'],payload['original_base64'],json.dumps({k:r[k] for k in ('sheets','coverage','warnings')},ensure_ascii=False)))
    for item in r['items']:
@@ -222,7 +226,7 @@ def install(app,db,locked_case,audit,utcnow,user_from_token,require_roles,safe_c
    if not r:raise HTTPException(404,'Lot introuvable')
    content=base64.b64decode(r['original_base64']);assert hashlib.sha256(content).hexdigest()==r['sha256']
    audit(c,u['id'],'export','registry_source',batch_id,{})
-  suffix='.xlsx' if r['filename'].lower().endswith('.xlsx') else '.csv'
+  suffix='.xlsx' if r['filename'].lower().endswith('.xlsx') else '.jsonl' if r['filename'].lower().endswith('.jsonl') else '.csv'
   return StreamingResponse(io.BytesIO(content),media_type='application/octet-stream',headers={'Content-Disposition':'attachment; filename="source_ppef'+suffix+'"'})
  @app.get('/registry/statements')
  def statements(start:date|None=None,end:date|None=None,as_of:date|None=None,cabinet:str|None=None,category:str|None=None,provenance:str|None=None,waiting_days:int=90,u=Depends(user_from_token)):

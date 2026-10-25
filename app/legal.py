@@ -183,7 +183,7 @@ def install_legal(app,db,locked_case,audit,utcnow,user_from_token,require_roles,
     @app.get('/cases/{case_id}/legal')
     def get_legal(case_id:int,u=Depends(user_from_token)):
         with db() as c:
-            row=c.execute('SELECT version FROM cases WHERE id=?',(case_id,)).fetchone()
+            row=locked_case(c,case_id)
             if not row: raise HTTPException(404,'Dossier introuvable.')
             return {'case_id':case_id,'version':row['version'],**legal_snapshot(c,case_id)}
 

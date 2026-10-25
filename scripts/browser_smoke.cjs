@@ -89,31 +89,27 @@ const root=path.resolve(__dirname,'..');
   await page.getByLabel('Mot de passe initial').fill('Synthetic-Agent-2026!');
   await page.getByRole('button',{name:'Créer le compte'}).click();
   await page.getByText('demo_agent',{exact:true}).waitFor();
-  await page.locator('nav').getByRole('link',{name:'Imports',exact:true}).click();
-  await page.getByLabel('Fichier CSV ou XLSX').setInputFiles({name:'sans-entete.csv',mimeType:'text/csv',buffer:Buffer.from('rp_number,date_rp,provenance,category\nSYNTH-OVERFLOW,2026-03-01,Fictif,Fictif,information sans entete\n')});
+  await page.locator('nav').getByRole('link',{name:'Imports & documents',exact:true}).click();
+  await page.getByLabel('Fichier CSV, XLSX ou JSONL').setInputFiles({name:'sans-entete.csv',mimeType:'text/csv',buffer:Buffer.from('rp_number,date_rp,provenance,category\nSYNTH-OVERFLOW,2026-03-01,Fictif,Fictif,information sans entete\n')});
   await page.getByRole('button',{name:'Contrôler le fichier'}).click();
   await page.getByText('Colonne renseignée sans correspondance : COL_5',{exact:true}).waitFor();
   assert(await page.locator('[data-confirm-import]').isDisabled());
-  await page.getByLabel('Fichier CSV ou XLSX').setInputFiles({name:'decision-a-verifier.csv',mimeType:'text/csv',buffer:Buffer.from('rp_number,date_rp,provenance,category,N° de la décision,Date de la décision,Contenu de la décision\nSYNTH-REVIEW,2026-03-01,Fictif,Fictif,D1,2026-03-02,Annulation de la condamnation\n')});
+  await page.getByLabel('Fichier CSV, XLSX ou JSONL').setInputFiles({name:'decision-a-verifier.csv',mimeType:'text/csv',buffer:Buffer.from('rp_number,date_rp,provenance,category,N° de la décision,Date de la décision,Contenu de la décision\nSYNTH-REVIEW,2026-03-01,Fictif,Fictif,D1,2026-03-02,Annulation de la condamnation\n')});
   await page.getByRole('button',{name:'Contrôler le fichier'}).click();
   await page.getByText('Avant soumission : Résultat de décision à confirmer sur la pièce source : D2',{exact:false}).waitFor();
   assert(await page.getByText('Feuille source :',{exact:false}).isVisible());
   if(process.env.SISA_SCREENSHOT_DIR){fs.mkdirSync(process.env.SISA_SCREENSHOT_DIR,{recursive:true});await page.locator('#toast').waitFor({state:'hidden'});await page.screenshot({path:path.join(process.env.SISA_SCREENSHOT_DIR,'sisa-import-review.png'),fullPage:true,animations:'disabled'});}
-  await page.getByLabel('Fichier CSV ou XLSX').setInputFiles({name:'synthetic.csv',mimeType:'text/csv',buffer:Buffer.from('rp_number,rp_year,date_rp,provenance,category,transnational\nSYNTH-UI-IMP,2026,2026-03-01,OPJ fictif,Fraude fictive,Non\n')});
+  await page.getByLabel('Fichier CSV, XLSX ou JSONL').setInputFiles({name:'synthetic.csv',mimeType:'text/csv',buffer:Buffer.from('rp_number,rp_year,date_rp,provenance,category,transnational\nSYNTH-UI-IMP,2026,2026-03-01,OPJ fictif,Fraude fictive,Non\n')});
   await page.getByRole('button',{name:'Contrôler le fichier'}).click();
   await page.getByRole('button',{name:'Confirmer la reprise de 1 dossier(s)'}).click();
-  await page.getByRole('cell',{name:'synthetic.csv',exact:true}).waitFor();
+  await page.getByRole('cell',{name:'synthetic.csv',exact:true}).first().waitFor();
   await page.locator('nav').getByRole('link',{name:'Pilotage & rapports',exact:true}).click();
-  await page.locator('#stats-result .metric-value').first().waitFor();
-  assert.equal(await page.locator('#stats-result .metric-value').first().innerText(),'1');
-  for(const [type,signature] of [['PDF','%PDF-'],['XLSX','PK'],['XLSX registre','PK'],['JSON','{']]){
-   const row=page.locator('.export-option').filter({has:page.locator('.export-type',{hasText:new RegExp('^'+type+'$')})});
-   const pending=page.waitForEvent('download');await row.getByRole('button').click();const file=await pending;
-   const buffer=fs.readFileSync(await file.path());assert(buffer.subarray(0,signature.length).toString()===signature);
-  }
-  for(const tab of ['content','delays','workload','money','quality','forecast']){await page.locator('[data-statement="'+tab+'"]').click();assert(await page.locator('#stats-result').innerText());}
-  await page.locator('[data-statement="activity"]').click();
-  if(process.env.SISA_SCREENSHOT_DIR){fs.mkdirSync(process.env.SISA_SCREENSHOT_DIR,{recursive:true});await page.screenshot({path:path.join(process.env.SISA_SCREENSHOT_DIR,'sisa-legal-statistics.png'),fullPage:true,animations:'disabled'});}
+  await page.locator('#dashboard-content .metric-value').first().waitFor();
+  assert.equal(await page.locator('#dashboard-content .metric-value').first().innerText(),'2');
+  for(const tab of ['cases','decisions','people','money','delays','quality','summary']){await page.locator('[data-dashboard-tab="'+tab+'"]').click();assert(await page.locator('#dashboard-content').innerText());}
+  const downloadPending=page.waitForEvent('download');await page.locator('#dashboard-export').click();const exported=await downloadPending;assert(fs.readFileSync(await exported.path(),'utf8').includes('Filtres'));
+  for(const [url,signature] of [['/registry/reports/pdf','%PDF-'],['/registry/reports/xlsx','PK'],['/registry/records.xlsx','PK'],['/registry/export.json','{']]){const response=await page.request.get(base+url);assert(response.ok());assert((await response.body()).subarray(0,signature.length).toString()===signature);}
+  if(process.env.SISA_SCREENSHOT_DIR){await page.screenshot({path:path.join(process.env.SISA_SCREENSHOT_DIR,'sisa-dashboard.png'),fullPage:true,animations:'disabled'});}
   await page.locator('nav').getByRole('link',{name:'Journal d’audit',exact:true}).click();
   await page.getByRole('heading',{name:'Dernières opérations'}).waitFor();
   await page.locator('nav').getByRole('link',{name:'Vue d’ensemble',exact:true}).click();
