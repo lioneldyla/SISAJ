@@ -81,8 +81,10 @@ class Offence(Model):
   if self.amount_basis=='other' and not self.amount_basis_other:raise ValueError('Préciser la définition du montant de l’infraction')
   return self
 
-class Outcome(Model):
- person_reference:str;offence_reference:str
+class Outcome(BaseModel):
+ model_config=ConfigDict(str_strip_whitespace=True,extra='forbid')
+ person_reference:str=Field(min_length=1,max_length=80)
+ offence_reference:str=Field(min_length=1,max_length=80)
  result:Literal['conviction','acquittal','other','unknown']
 
 class Decision(Model):
@@ -115,6 +117,24 @@ class Measure(Model):
  disposition_other:str|None=Field(default=None,max_length=500)
  valuation_basis:str='undetermined';valuation_basis_other:str|None=Field(default=None,max_length=250)
  amount:Money=Field(default_factory=Money)
+
+class Hearing(Model):
+ reference:str=Field(min_length=1,max_length=80)
+ planned_date:date|None=None
+ held_date:date|None=None
+ status:Literal['planned','held','adjourned','cancelled']='planned'
+ next_date:date|None=None
+ reason:str|None=Field(default=None,max_length=2000)
+ source_reference:str|None=Field(default=None,max_length=250)
+ @model_validator(mode='after')
+ def chronology(self):
+  if self.status in ('held','adjourned') and not self.held_date:raise ValueError('Audience tenue ou renvoyée : date effective obligatoire')
+  if self.status in ('planned','cancelled') and self.held_date:raise ValueError('Audience prévue ou annulée : ne pas saisir de date tenue')
+  if not self.planned_date and not self.held_date:raise ValueError('Audience : une date prévue ou tenue est nécessaire')
+  if self.next_date and self.status!='adjourned':raise ValueError('Prochaine date de renvoi réservée à une audience renvoyée')
+  if self.next_date and self.held_date and self.next_date<=self.held_date:raise ValueError('Date de renvoi postérieure à l’audience requise')
+  if self.status in ('adjourned','cancelled') and not self.reason:raise ValueError('Motif du renvoi ou de l’annulation requis')
+  return self
 
 class Procedure(Model):
  cabinet_state:Literal['known','not_recorded','undetermined','pending','not_applicable']='not_recorded'
@@ -174,9 +194,10 @@ class Register(Model):
  decisions:list[Decision]=Field(default_factory=list,max_length=1000)
  sentences:list[Sentence]=Field(default_factory=list,max_length=1000)
  measures:list[Measure]=Field(default_factory=list,max_length=1000)
+ hearings:list[Hearing]=Field(default_factory=list,max_length=1000)
  @model_validator(mode='after')
  def links(self):
-  for group in ('people','offences','decisions','sentences','measures'):
+  for group in ('people','offences','decisions','sentences','measures','hearings'):
    vals=getattr(self,group)
    if len({v.reference for v in vals})!=len(vals):raise ValueError('Référence dupliquée dans '+group)
   p={x.reference:x for x in self.people};off={x.reference for x in self.offences};dec={x.reference:x for x in self.decisions}
@@ -205,6 +226,7 @@ class SaveRegister(Model):
 def validate_dates(record,received):
  dates=[('orientation',record.procedure.orientation_date),('clôture',record.procedure.closure_date),('audience prévue',record.procedure.first_hearing_planned),('audience tenue',record.procedure.first_hearing_held),('transmission',record.procedure.transmission_date)]
  dates += [('décision',d.decision_date) for d in record.decisions]+[('mesure',m.measure_date) for m in record.measures]
+ dates += [('audience prévue',h.planned_date) for h in record.hearings]+[('audience tenue',h.held_date) for h in record.hearings]+[('renvoi',h.next_date) for h in record.hearings]
  for label,d in dates:
   if d and d<received:raise ValueError(label+' antérieure à la date RP')
  return record
@@ -225,6 +247,15 @@ def quality(record,case):
  for d in record.decisions:
   if d.content and d.result=='undetermined':add('DECISION_RESULT_REVIEW','Résultat de décision à confirmer sur la pièce source : '+d.reference)
   if d.result not in ('not_rendered','not_recorded','pending') and (not d.number or not d.decision_date):add('DECISION_REFERENCE','Décision rendue sans date ou numéro : '+d.reference)
+  if d.nature in ('merits','mixed','partial_merits') and d.decision_date:
+   if d.result in ('not_rendered','not_recorded','undetermined','pending'):add('MERITS_RESULT','Résultat au fond à confirmer : '+d.reference)
+   defendants={x.reference for x in record.people if x.role=='defendant'}
+   unknown={o.person_reference for o in d.outcomes if o.result=='unknown'}
+   if unknown or (defendants and not d.outcomes):add('INDIVIDUAL_RESULT','Résultats individuels absents ou explicitement inconnus : '+d.reference)
+   values={o.result for o in d.outcomes}
+   expected={'conviction':{'conviction'},'acquittal':{'acquittal'},'mixed':{'conviction','acquittal'}}.get(d.result)
+   if expected and values-{'unknown'}!=expected:add('RESULT_CONFLICT','Résultat global et résultats individuels à rapprocher : '+d.reference)
+ if p.orientation_date and p.closure_date and p.closure_date<p.orientation_date:add('PROCEDURE_CHRONOLOGY','Clôture d’instruction antérieure à l’orientation')
  for m in record.measures:
   if not m.measure_date:add('MEASURE_DATE','Date de mesure manquante : '+m.reference)
   if m.kind in ('seizure','confiscation') and m.object_kind in ('not_recorded','undetermined','not_applicable'):add('OBJECT_KIND','Bien à préciser : '+m.reference)

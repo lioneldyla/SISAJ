@@ -35,6 +35,8 @@ with tempfile.TemporaryDirectory(prefix='sisaj-restore-') as tmp:
         assert c.post(f'/cases/{cid}/submit?expected_version=3',headers=h).status_code==200
         assert c.post(f'/cases/{cid}/validate?expected_version=4',headers=h).status_code==200
         before=c.get('/stats/legal',headers=h).json()
+        assert c.post('/compliance/reviews',headers=h,json={'scenario':'restore','result':'pending','expected':'Comparaison intégrale après restauration','observed':'Exercice synthétique en cours de vérification','evidence':'Restauration isolée exécutée par le script de test'}).status_code==200
+        frozen=c.post('/dashboard/snapshots',headers=h,json={'title':'État fictif avant restauration'}).json()
         content=b'rp_number,rp_year,date_rp,provenance,category,transnational\nSYNTH-RESTORED-IMPORT,2026,2026-03-01,Test fictif,Test fictif,Non\n'
         pid=c.post('/imports/preview',headers=h,files={'file':('synthetic.csv',content,'text/csv')}).json()['preview_id']
         backup=c.post('/admin/backup',headers=h).json();archive=backups/backup['file']
@@ -65,9 +67,12 @@ with TestClient(app) as c:
  assert c.get('/cases',headers=h).json()['total']==3
  assert c.get('/cases/1/register',headers=h).json()['record']['procedure']['cabinet']=='Cabinet synthétique restauré'
  assert c.get('/registry/imports/'+os.environ['SISA_RESTORE_SOURCE_BATCH']+'/source',headers=h).content.startswith(b'rp_number')
+ assert len(c.get('/compliance/reviews',headers=h).json()['items'])==1
+ snap=c.get('/dashboard/snapshots/'+os.environ['SISA_RESTORE_SNAPSHOT_ID'],headers=h).json()
+ assert snap['sha256']==os.environ['SISA_RESTORE_SNAPSHOT_HASH'] and snap['snapshot']['analysis']['cohort_size']==2
  print('Restored application: authentication, full legal record, identical indicators and pending import verified.')
 '''
-        result=subprocess.run([sys.executable,'-c',check],cwd=root,env={**os.environ,'SISA_DB_PATH':str(target),'SISA_RESTORE_TEST_HEADER':json.dumps(h),'SISA_RESTORE_TEST_STATS':json.dumps(before),'SISA_RESTORE_TEST_PREVIEW':pid,'SISA_RESTORE_SOURCE_BATCH':source_batch},text=True,capture_output=True)
+        result=subprocess.run([sys.executable,'-c',check],cwd=root,env={**os.environ,'SISA_DB_PATH':str(target),'SISA_RESTORE_TEST_HEADER':json.dumps(h),'SISA_RESTORE_TEST_STATS':json.dumps(before),'SISA_RESTORE_TEST_PREVIEW':pid,'SISA_RESTORE_SOURCE_BATCH':source_batch,'SISA_RESTORE_SNAPSHOT_ID':frozen['id'],'SISA_RESTORE_SNAPSHOT_HASH':frozen['sha256']},text=True,capture_output=True)
         if result.returncode:raise RuntimeError(result.stderr)
         print(result.stdout.strip())
         print(f'SQLite snapshot restored into a new database; {len(tables)} tables compared completely; integrity and foreign keys valid.')

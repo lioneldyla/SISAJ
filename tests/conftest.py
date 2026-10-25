@@ -36,6 +36,10 @@ def reset_test_database():
         c.executescript(TRANSFER_SCHEMA)
         from app.access import SCHEMA as ACCESS_SCHEMA
         c.executescript(ACCESS_SCHEMA)
+        from app.compliance import SCHEMA as COMPLIANCE_SCHEMA
+        c.executescript(COMPLIANCE_SCHEMA)
+        c.execute('DELETE FROM business_reviews')
+        c.execute('DELETE FROM analysis_snapshots')
         c.execute('DELETE FROM user_data_profiles')
         c.execute('DELETE FROM transfer_archives')
         c.execute('DELETE FROM reference_documents')

@@ -49,7 +49,7 @@ def test_six_statements_independent_oracle_and_exports(context):
  d=c.get('/registry/statements?start=2026-02-01&end=2026-02-28',headers=h).json()
  assert d['counts']['closed']==1 and d['counts']['judged_cases']==1 and d['counts']['mixed_decisions']==1
  assert d['counts'].get('received',0)==0 and d['throughput_percent'] is None
- assert d['stock']['count']==0
+ assert d['stock']['count'] is None and d['instruction_stock']['count']==0
  assert d['delays']['receipt_to_closure']=={'n':1,'mean_days':22.0,'median_days':22}
  assert d['delays']['receipt_to_hearing']['median_days']==33
  assert d['delays']['receipt_to_decision']['median_days']==41
@@ -58,8 +58,8 @@ def test_six_statements_independent_oracle_and_exports(context):
  assert d['sentence_months']=={'min':12,'max':12}
  assert not d['forecast']['available']
  assert c.get('/stats/legal',headers=h).json()['mixed_decisions']==1
- assert c.get('/registry/statements?as_of=2026-01-31',headers=h).json()['stock']['count']==1
- assert c.get('/registry/statements?cabinet=ABSENT',headers=h).json()['stock']['count']==0
+ assert c.get('/registry/statements?as_of=2026-01-31',headers=h).json()['instruction_stock']['count']==1
+ assert c.get('/registry/statements?cabinet=ABSENT',headers=h).json()['instruction_stock']['count']==0
  assert c.get('/registry/reports/pdf?start=2026-02-01&end=2026-02-28',headers=h).content.startswith(b'%PDF-')
  wb=load_workbook(BytesIO(c.get('/registry/reports/xlsx',headers=h).content));assert 'Méthode' in wb.sheetnames
  wb=load_workbook(BytesIO(c.get('/registry/records.xlsx',headers=h).content));assert set(('Personnes','Infractions','Décisions','Peines','Mesures','Résultats'))<=set(wb.sheetnames)
