@@ -35,14 +35,21 @@ with TestClient(app) as client:
     preview=client.post('/imports/preview',headers=headers,files={'file':('synthetic.csv',b'rp_number,rp_year,date_rp,provenance,category,transnational\nSYNTH-RESTORE-IMPORT,2026,2026-03-01,Fictif,Fictif,Non\n','text/csv')}).json()['preview_id']
 pg_env={**os.environ,'PGPASSWORD':parts.password or ''}
 base=['-h','127.0.0.1','-p','55432','-U',parts.username or 'sisa']
-dump=subprocess.run(['pg_dump',*base,'-d','sisa_test','-Fc'],env=pg_env,capture_output=True)
+container=os.environ.get('SISA_TEST_PG_CONTAINER','')
+if container and not __import__('re').fullmatch(r'[0-9a-f]{12,64}',container):
+    raise SystemExit('Invalid isolated PostgreSQL test container ID.')
+def pg_tool(name,database,flags,input=None):
+    # Use the matching server image's client in CI, including PostgreSQL 18.
+    cmd=['docker','exec','-i',container,name,'-U',parts.username or 'sisa','-d',database,*flags] if container else [name,*base,'-d',database,*flags]
+    return subprocess.run(cmd,env=pg_env,input=input,capture_output=True)
+dump=pg_tool('pg_dump','sisa_test',['-Fc'])
 if dump.returncode:raise RuntimeError('pg_dump failed; connection details suppressed.')
 assert dump.stdout.startswith(b'PGDMP')
 restore_name='sisa_restore_'+secrets.token_hex(6);created=False
 try:
     with psycopg.connect(url,autocommit=True) as c:
         c.execute(sql.SQL('CREATE DATABASE {}').format(sql.Identifier(restore_name)));created=True
-    result=subprocess.run(['pg_restore',*base,'-d',restore_name,'--no-owner','--no-acl','--single-transaction','--exit-on-error'],env=pg_env,input=dump.stdout,capture_output=True)
+    result=pg_tool('pg_restore',restore_name,['--no-owner','--no-acl','--single-transaction','--exit-on-error'],input=dump.stdout)
     if result.returncode:raise RuntimeError('pg_restore failed; connection details suppressed.')
     target=urlunsplit((parts.scheme,parts.netloc,'/'+restore_name,'',''))
     with psycopg.connect(url) as source,psycopg.connect(target) as restored:
