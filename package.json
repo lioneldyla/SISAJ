@@ -1,6 +1,6 @@
 {
   "name": "sisa-platform",
-  "version": "0.7.0",
+  "version": "0.7.1",
   "private": true,
   "description": "Browser verification only; the production UI has no JavaScript build dependency.",
   "scripts": {

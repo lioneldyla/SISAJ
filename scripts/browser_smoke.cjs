@@ -34,6 +34,7 @@ const root=path.resolve(__dirname,'..');
   await page.getByLabel('Unité de provenance *',{exact:true}).fill('Unité fictive');
   await page.getByLabel('Catégorie / qualification source *',{exact:true}).fill('Corruption fictive');
   await page.getByRole('button',{name:'Enregistrer',exact:true}).click();
+  await page.locator('#dashboard-records > summary').click();
   await page.getByRole('button',{name:'SYNTH-UI-001',exact:true}).click();
   await page.getByRole('button',{name:'Consulter le contenu juridique'}).click();
   await page.locator('[data-field="procedure.orientation"]').selectOption('prosecution');
@@ -125,10 +126,14 @@ const root=path.resolve(__dirname,'..');
   assert.equal(await page.locator('#dashboard-content .metric-value').first().innerText(),'1');
   await page.locator('#dashboard-cabinets').selectOption('');
   await page.waitForFunction(()=>document.querySelector('#dashboard-perimeter').textContent.includes('2 dossiers'));
+  assert.equal(await page.locator('.dashboard-cards').first().locator('.metric').count(),6);
+  assert(!await page.locator('#dashboard-records').getAttribute('open'));
+  await page.locator('#dashboard-customize > summary').click();
   await page.locator('#dashboard-graph-type').selectOption('bars');
   assert.equal(await page.locator('[data-chart="monthly"]').inputValue(),'bars');
   await page.locator('[data-chart="monthly"]').selectOption('line');
   assert(await page.locator('#dashboard-content polyline').count()>0);
+  await page.locator('#dashboard-more-analysis > summary').click();
   await page.locator('[data-chart="result"]').selectOption('donut');
   assert(await page.locator('#dashboard-content circle').count()>0);
   await page.getByText('Choisir les indicateurs',{exact:true}).click();
@@ -138,9 +143,11 @@ const root=path.resolve(__dirname,'..');
   await page.locator('#dashboard-graph-type').selectOption('columns');
 
   for(const tab of ['cases','decisions','people','money','delays','quality','summary']){await page.locator('[data-dashboard-tab="'+tab+'"]').click();assert(await page.locator('#dashboard-content').innerText());}
+  await page.locator('#dashboard-records > summary').click();
   const downloadPending=page.waitForEvent('download');await page.locator('#dashboard-export').click();const exported=await downloadPending;assert(fs.readFileSync(await exported.path(),'utf8').includes('Filtres'));
   for(const [url,signature] of [['/registry/reports/pdf','%PDF-'],['/registry/reports/xlsx','PK'],['/registry/records.xlsx','PK'],['/registry/export.json','{']]){const response=await page.request.get(base+url);assert(response.ok());assert((await response.body()).subarray(0,signature.length).toString()===signature);}
   if(process.env.SISA_SCREENSHOT_DIR){await page.screenshot({path:path.join(process.env.SISA_SCREENSHOT_DIR,'sisa-dashboard.png'),fullPage:true,animations:'disabled'});}
+  await page.locator('#dashboard-snapshots > summary').click();
   await page.getByLabel('Intitulé de l’état',{exact:true}).fill('Recette navigateur fictive');
   await page.getByRole('button',{name:'Figer cet état',exact:true}).click();
   await page.locator('.snapshot-item').filter({hasText:'Recette navigateur fictive'}).waitFor();
