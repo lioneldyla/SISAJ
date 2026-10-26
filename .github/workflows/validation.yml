@@ -26,7 +26,14 @@ jobs:
       - run: python scripts/verify_restore.py
       - run: python scripts/qualify_1500.py --report /tmp/sisa-overview-qa/qualification-1500.json
       - run: npm ci
-      - run: npx playwright install --with-deps chromium
+      - name: Select available browser
+        timeout-minutes: 5
+        run: |
+          if command -v google-chrome >/dev/null; then
+            printf 'SISA_CHROMIUM_PATH=%s\n' "$(command -v google-chrome)" >> "$GITHUB_ENV"
+          else
+            npx playwright install --with-deps chromium
+          fi
       - run: npm run test:e2e
         env:
           SISA_SCREENSHOT_DIR: /tmp/sisa-overview-qa
