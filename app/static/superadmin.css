@@ -9,3 +9,6 @@
 .site-support{margin:12px 40px;color:var(--muted);font-size:13px;overflow-wrap:anywhere}
 .brand [data-site-name]{display:block;max-width:150px;overflow-wrap:anywhere;font-size:22px}
 @media(max-width:650px){.sa-shortcuts .btn{flex:1 1 45%;justify-content:center}.site-support{margin:12px 20px}}
+.sidebar #nav{min-height:0;overflow-y:auto;flex:1 1 auto}
+.sidebar .workspace-label,.sidebar .brand,.sidebar-bottom{flex-shrink:0}
+.sidebar-bottom{padding-top:12px}.sidebar .profile{padding-top:12px}
