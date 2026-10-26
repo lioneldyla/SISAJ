@@ -68,6 +68,8 @@ def test_snapshot_scope_checked_for_entire_cohort_and_after_reassignment():
   _,other=account(c,h,'other_manager',profile='cabinet',cabinets=['A'])
   assert c.get(f'/dashboard/snapshots/{sid}',headers=other).status_code==404
   assert c.put(f'/users/{uid}/data-profile',headers=h,json={'profile':'cabinet','cabinets':['B']}).status_code==200
+  assert c.get(f'/dashboard/snapshots/{sid}',headers=scoped).status_code==401
+  scoped={'Authorization':'Bearer '+c.post('/auth/login',json={'username':'cabinet_manager','password':'Synthetic-Compliance-2026!'}).json()['access_token']}
   assert c.get(f'/dashboard/snapshots/{sid}',headers=scoped).status_code==403
   assert c.get('/dashboard/snapshots',headers=scoped).json()['items']==[]
 

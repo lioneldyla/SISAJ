@@ -40,6 +40,9 @@ with TestClient(app) as client:
     assert client.post(f'/cases/{case}/validate?expected_version=4',headers=headers).status_code==200
     before=client.get('/stats/legal',headers=headers).json()
     assert client.post('/compliance/reviews',headers=headers,json={'scenario':'restore','result':'pending','expected':'Comparaison intégrale après restauration','observed':'Exercice synthétique en cours de vérification','evidence':'Restauration isolée exécutée par le script de test'}).status_code==200
+    settings=client.get('/superadmin',headers=headers).json()['settings']
+    settings['site_name']='SISAJ restauration test'
+    assert client.put('/superadmin/configuration',headers=headers,json={'settings':settings,'expected_version':client.get('/superadmin',headers=headers).json()['version'],'reason':'Exercice de sauvegarde et restauration'}).status_code==200
     frozen=client.post('/dashboard/snapshots',headers=headers,json={'title':'État fictif avant restauration'}).json()
     preview=client.post('/imports/preview',headers=headers,files={'file':('synthetic.csv',b'rp_number,rp_year,date_rp,provenance,category,transnational\nSYNTH-RESTORE-IMPORT,2026,2026-03-01,Fictif,Fictif,Non\n','text/csv')}).json()['preview_id']
 pg_env={**os.environ,'PGPASSWORD':parts.password or ''}
@@ -64,7 +67,7 @@ try:
     with psycopg.connect(url) as source,psycopg.connect(target) as restored:
         tables=[r[0] for r in source.execute("SELECT tablename FROM pg_tables WHERE schemaname='public' ORDER BY tablename")]
         for name in tables:
-            query=sql.SQL('SELECT * FROM {} ORDER BY 1,2').format(sql.Identifier(name))
+            query=sql.SQL('SELECT * FROM {} ORDER BY 1').format(sql.Identifier(name))
             assert source.execute(query).fetchall()==restored.execute(query).fetchall(),name
     check='''
 import json,os
@@ -72,7 +75,9 @@ from fastapi.testclient import TestClient
 from app.main import app
 with TestClient(app) as c:
  h=json.loads(os.environ['SISA_RESTORE_TEST_HEADER'])
- assert c.get('/auth/me',headers=h).status_code==200
+ assert c.get('/auth/me',headers=h).json()['super_admin'] is True
+ assert c.get('/superadmin',headers=h).json()['settings']['site_name']=='SISAJ restauration test'
+ assert len(c.get('/superadmin/configuration/history',headers=h).json()['items'])>=2
  assert c.get('/stats/legal',headers=h).json()==json.loads(os.environ['SISA_RESTORE_TEST_STATS'])
  assert c.get('/cases/1/legal',headers=h).json()['measures'][0]['amount']=='12.50'
  assert c.post('/imports/'+os.environ['SISA_RESTORE_TEST_PREVIEW']+'/confirm',headers=h).json()['imported_rows']==1

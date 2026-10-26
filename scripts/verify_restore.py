@@ -36,6 +36,9 @@ with tempfile.TemporaryDirectory(prefix='sisaj-restore-') as tmp:
         assert c.post(f'/cases/{cid}/validate?expected_version=4',headers=h).status_code==200
         before=c.get('/stats/legal',headers=h).json()
         assert c.post('/compliance/reviews',headers=h,json={'scenario':'restore','result':'pending','expected':'Comparaison intégrale après restauration','observed':'Exercice synthétique en cours de vérification','evidence':'Restauration isolée exécutée par le script de test'}).status_code==200
+        settings=c.get('/superadmin',headers=h).json()['settings']
+        settings['site_name']='SISAJ restauration test'
+        assert c.put('/superadmin/configuration',headers=h,json={'settings':settings,'expected_version':c.get('/superadmin',headers=h).json()['version'],'reason':'Exercice de sauvegarde et restauration'}).status_code==200
         frozen=c.post('/dashboard/snapshots',headers=h,json={'title':'État fictif avant restauration'}).json()
         content=b'rp_number,rp_year,date_rp,provenance,category,transnational\nSYNTH-RESTORED-IMPORT,2026,2026-03-01,Test fictif,Test fictif,Non\n'
         pid=c.post('/imports/preview',headers=h,files={'file':('synthetic.csv',content,'text/csv')}).json()['preview_id']
@@ -49,7 +52,7 @@ with tempfile.TemporaryDirectory(prefix='sisaj-restore-') as tmp:
             assert b.execute('PRAGMA foreign_key_check').fetchall()==[]
             tables=[r[0] for r in a.execute("SELECT name FROM sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%' ORDER BY name")]
             for table in tables:
-                assert a.execute('SELECT * FROM '+table+' ORDER BY 1,2').fetchall()==b.execute('SELECT * FROM '+table+' ORDER BY 1,2').fetchall(),table
+                assert a.execute('SELECT * FROM '+table+' ORDER BY 1').fetchall()==b.execute('SELECT * FROM '+table+' ORDER BY 1').fetchall(),table
         # SQLite previews are sidecars: restore the separately copied pending preview as well.
         preview=source.parent/f'preview_{pid}.json'
         assert preview.exists()
@@ -60,7 +63,9 @@ from fastapi.testclient import TestClient
 from app.main import app
 with TestClient(app) as c:
  h=json.loads(os.environ['SISA_RESTORE_TEST_HEADER'])
- assert c.get('/auth/me',headers=h).status_code==200
+ assert c.get('/auth/me',headers=h).json()['super_admin'] is True
+ assert c.get('/superadmin',headers=h).json()['settings']['site_name']=='SISAJ restauration test'
+ assert len(c.get('/superadmin/configuration/history',headers=h).json()['items'])>=2
  assert c.get('/stats/legal',headers=h).json()==json.loads(os.environ['SISA_RESTORE_TEST_STATS'])
  assert c.get('/cases/1/legal',headers=h).json()['measures'][0]['amount']=='1200.50'
  assert c.post('/imports/'+os.environ['SISA_RESTORE_TEST_PREVIEW']+'/confirm',headers=h).json()['imported_rows']==1

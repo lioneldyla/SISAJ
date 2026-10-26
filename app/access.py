@@ -9,6 +9,10 @@ SCHEMA='CREATE TABLE IF NOT EXISTS user_data_profiles(user_id INTEGER PRIMARY KE
 def augment(c,u):
     r=c.execute('SELECT * FROM user_data_profiles WHERE user_id=?',(u['id'],)).fetchone()
     if r:u['data_profile']={'profile':r['profile'],'cabinets':json.loads(r['cabinets']),'jurisdictions':json.loads(r['jurisdictions'])}
+    from .superadmin import is_super
+    u['super_admin']=is_super(c,u['id'])
+    label=c.execute('SELECT p.label FROM admin_profile_assignments a JOIN admin_profiles p ON p.id=a.profile_id WHERE a.user_id=?',(u['id'],)).fetchone()
+    if label:u['profile_label']=label['label']
     return u
 def permitted(c,case,u=None):
     u=u or principal.get();p=u.get('data_profile') if u else None
@@ -33,11 +37,15 @@ def install(app,db,audit,utcnow,require_roles):
     def assign(uid:int,x:Profile,u=Depends(require_roles('admin'))):
         roles={'technical':'admin','direction':'supervisor','cabinet':'supervisor','clerk':'collector','statistician':'supervisor'}
         with db(write=True) as c:
+            from .superadmin import is_super
+            if is_super(c,uid):raise HTTPException(403,'Modifier ce compte depuis l’espace super administrateur.')
             r=c.execute('SELECT role FROM users WHERE id=?',(uid,)).fetchone()
             if not r:raise HTTPException(404,'Compte introuvable')
             if x.profile not in roles or roles[x.profile]!=r['role']:raise HTTPException(422,'Profil incompatible avec le rôle de sécurité')
             if x.profile in ('cabinet','clerk') and not (x.cabinets or x.jurisdictions):raise HTTPException(422,'Périmètre obligatoire')
             c.execute('DELETE FROM user_data_profiles WHERE user_id=?',(uid,));c.execute('INSERT INTO user_data_profiles VALUES (?,?,?,?)',(uid,x.profile,json.dumps(x.cabinets),json.dumps(x.jurisdictions)))
+            c.execute('DELETE FROM admin_profile_assignments WHERE user_id=?',(uid,))
+            c.execute('DELETE FROM sessions WHERE user_id=?',(uid,))
             audit(c,u['id'],'assign','data_profile',uid,x.model_dump())
         return {'status':'assigned','profile':x.profile}
     @app.middleware('http')
