@@ -1,0 +1,17 @@
+[Unit]
+Description=Sauvegarde SISAJ chiffrée et restauration isolée vérifiée
+After=network-online.target
+Wants=network-online.target
+[Service]
+Type=oneshot
+User=sisaj-backup
+Group=sisaj-backup
+WorkingDirectory=/opt/sisaj
+EnvironmentFile=/etc/sisaj/backup.env
+ExecStart=/opt/sisaj/.venv/bin/python /opt/sisaj/scripts/run_backup_job.py --output /var/backups/sisaj
+UMask=0077
+NoNewPrivileges=yes
+PrivateTmp=yes
+ProtectSystem=strict
+ProtectHome=yes
+ReadWritePaths=/var/backups/sisaj
