@@ -3,7 +3,7 @@ import csv,io,json,zipfile
 from copy import deepcopy
 from datetime import date,timedelta
 PATHS=['attente_orientation','classement','transmission','non_lieu_total','non_lieu_partiel','saisine_jugement','decision_mixte','relaxe','audience_renvoyee','instruction_ouverte']
-EXPECTED={'dossiers':1500,'personnes':3000,'personnes_physiques':1500,'personnes_morales':1500,'infractions':3000,'decisions':600,'mesures':2400,'decision_mixte':150,'saisies_xof':'15000.00','confiscations_xof':'1800.00','amendes_xof':'450.00','delai_median_jours':40,'anomalies_attendues':0,'parcours':{p:150 for p in PATHS},'officially_approved':False}
+EXPECTED={'dossiers':1500,'personnes':3000,'personnes_physiques':1500,'personnes_morales':1500,'infractions':3000,'decisions':600,'mesures':2400,'decision_mixte':150,'enjeux_allegues_xof':'450000.00','saisies_xof':'15000.00','confiscations_xof':'1800.00','amendes_xof':'450.00','delai_median_jours':40,'anomalies_attendues':0,'parcours':{p:150 for p in PATHS},'officially_approved':False}
 def items():
  for n in range(1500):
   k=n%10;received=date(2024,1,1)+timedelta(days=n%365);d=lambda x:(received+timedelta(days=x)).isoformat()

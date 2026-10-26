@@ -93,7 +93,7 @@ def install(app,db,locked_case,audit,utcnow,user_from_token,require_roles,safe_c
  @app.get('/followup')
  def overview(as_of:date|None=None,attention_days:int=Query(default=7,ge=1,le=365),status:Literal['all','pending','in_progress','completed','cancelled']='all',q:str=Query(default='',max_length=200),offset:int=Query(default=0,ge=0),limit:int=Query(default=30,ge=1,le=100),u=Depends(user_from_token)):
   with db() as c:data=listing(c,u,as_of or date.today(),attention_days,status,q)
-  data['total']=len(data['items']);data['items']=data['items'][offset:offset+limit];data['hearings']=data['hearings'][:200]
+  data['hearings_total']=len(data['hearings']);data['total']=len(data['items']);data['items']=data['items'][offset:offset+limit];data['hearings']=data['hearings'][:200]
   return data
  @app.get('/followup/export.csv')
  def export(as_of:date|None=None,attention_days:int=Query(default=7,ge=1,le=365),status:Literal['all','pending','in_progress','completed','cancelled']='all',q:str=Query(default='',max_length=200),u=Depends(require_roles('admin','supervisor'))):

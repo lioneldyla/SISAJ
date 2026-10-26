@@ -47,3 +47,11 @@ def test_source_links_dates_and_execution_remain_explicit():
   assert c.post(f'/cases/{cid}/followup',headers=h,json=entry(4,kind='execution',measure_reference='CONF1',amount={'state':'known','value':'5.00','currency':'EUR'})).status_code==422
   ok=c.post(f'/cases/{cid}/followup',headers=h,json=entry(4,kind='execution',measure_reference='CONF1',amount={'state':'known','value':'5.00','currency':'XOF'}));assert ok.status_code==200,ok.text
   assert c.get(f'/cases/{cid}/register',headers=h).json()['record']['measures'][-1]['amount']['value']=='10.00'
+
+def test_only_recorded_future_planned_or_adjourned_hearings_are_listed():
+ with TestClient(app) as c:
+  h=context(c);cid=case(c,h,'SYNTH-CALENDAR','A');record=c.get(f'/cases/{cid}/register',headers=h).json()['record']
+  record['hearings']=[{'reference':'A1','planned_date':'2030-01-01','status':'planned'}, {'reference':'A2','planned_date':'2026-02-02','held_date':'2026-02-02','status':'adjourned','next_date':'2026-03-15','reason':'Renvoi fictif'}, {'reference':'A3','planned_date':'2026-03-20','status':'cancelled','reason':'Annulation fictive'}]
+  assert c.put(f'/cases/{cid}/register',headers=h,json={'expected_version':2,'record':record,'reason':'Recette du calendrier renseigné'}).status_code==200
+  d=c.get('/followup?as_of=2026-03-01',headers=h).json();assert [v['reference'] for v in d['hearings']]==['A2','A1'] and d['hearings_total']==2
+  assert c.get('/followup?as_of=2031-01-01',headers=h).json()['hearings']==[]

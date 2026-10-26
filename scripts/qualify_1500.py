@@ -24,6 +24,9 @@ with tempfile.TemporaryDirectory(prefix='sisaj-qualify-1500-') as tmp:
   start=time.perf_counter();data=c.get('/dashboard/analysis?as_of=2026-10-26',headers=h).json();report['dashboard_seconds']=round(time.perf_counter()-start,3);cards={v['key']:v for v in data['cards']}
   assert cards['received']['value']==1500 and cards['judged']['value']==600 and cards['persons']['value']==3000 and cards['quality']['value']==0
   assert cards['delay']['value']==40
+  assert sum(v['count'] for v in data['results'] if v['key']=='mixed')==150
+  assert sum(Decimal(v['amount']) for v in data['financial'] if v['kind']=='fine' and v['currency']=='XOF')==Decimal(EXPECTED['amendes_xof'])
+  assert sum(Decimal(v['amount']) for v in data['financial'] if v['kind']=='alleged' and v['currency']=='XOF')==Decimal(EXPECTED['enjeux_allegues_xof'])
   assert Decimal(cards['seizure']['value'])==Decimal(EXPECTED['saisies_xof']) and Decimal(cards['confiscation']['value'])==Decimal(EXPECTED['confiscations_xof'])
   assert len(data['procedural_coverage'])>=4;report['checks']['independent_expected_statistics']=True
   cid=c.get('/cases?q=RECETTE-V2-00001',headers=h).json()['items'][0]['id'];other=c.get('/cases?q=RECETTE-V2-00002',headers=h).json()['items'][0]['id']
