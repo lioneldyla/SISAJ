@@ -19,6 +19,10 @@ def test_additive_startup_preserves_all_legacy_tables(tmp_path):
     result=subprocess.run([sys.executable,'-c','import app.main'],cwd=Path(__file__).resolve().parent.parent,env={**os.environ,'DATABASE_URL':'','SISA_DEPLOYMENT':'local','SISA_DB_PATH':str(path),'SISA_BACKUP_DIR':str(tmp_path/'backups')},capture_output=True)
     assert result.returncode==0,result.stderr.decode()
     with sqlite3.connect(path) as c:
-        assert {table:c.execute('SELECT * FROM '+table+' ORDER BY 1').fetchall() for table in tables}==before
+        for table in tables:
+            rows=c.execute('SELECT * FROM '+table+' ORDER BY 1').fetchall()
+            assert (rows[:len(before[table])] if table=='audit_log' else rows)==before[table]
+        assert c.execute('SELECT user_id FROM super_administrators').fetchall()==[(1,)]
+        assert c.execute("SELECT COUNT(*) FROM audit_log WHERE action='migrate_owner'").fetchone()[0]==1
         assert c.execute('SELECT version FROM schema_migrations').fetchall()==[('004-legal-additive',),('005-complete-register',)]
         assert c.execute('SELECT COUNT(*) FROM case_people').fetchone()[0]==0

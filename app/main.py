@@ -29,7 +29,7 @@ if CLOUD and os.getenv('SISA_DATA_MODE', 'synthetic') != 'synthetic':
     raise RuntimeError('Cette version cloud est réservée aux données synthétiques.')
 SECURE_COOKIE = os.getenv('SISA_SECURE_COOKIE', '1' if CLOUD else '0') == '1'
 SESSION_TTL = 8 * 60 * 60
-app = FastAPI(title='SISA — Système intelligent de suivi et d’analyse judiciaire', version='0.7.1', description='MVP local-first. Données synthétiques uniquement jusqu’à validation institutionnelle.')
+app = FastAPI(title='SISA — Système intelligent de suivi et d’analyse judiciaire', version='0.8.0', description='MVP local-first. Données synthétiques uniquement jusqu’à validation institutionnelle.')
 
 SCHEMA = '''
 PRAGMA foreign_keys=ON;
@@ -118,7 +118,7 @@ class ReturnIn(BaseModel):
 class UserIn(BaseModel): username: str=Field(min_length=3,max_length=80); password: str=Field(min_length=14,max_length=200); role: str
 
 @app.get('/health')
-def health(): return {'status':'ok','app':'SISA','version':'0.7.1','mode':'render-synthetic' if CLOUD else 'local-first','cloud_sync':'disabled','external_ai':'disabled'}
+def health(): return {'status':'ok','app':'SISA','version':'0.8.0','mode':'render-synthetic' if CLOUD else 'local-first','cloud_sync':'disabled','external_ai':'disabled'}
 @app.post('/auth/bootstrap')
 def bootstrap(x: BootstrapIn, x_sisa_bootstrap_key: Optional[str]=Header(default=None)):
     key = os.getenv('SISA_BOOTSTRAP_KEY', '')
@@ -130,7 +130,7 @@ def bootstrap(x: BootstrapIn, x_sisa_bootstrap_key: Optional[str]=Header(default
         if c.execute('SELECT COUNT(*) n FROM users').fetchone()['n']:
             raise HTTPException(409,'Initialisation déjà effectuée.')
         c.execute('INSERT INTO users(username,password_hash,role,created_at) VALUES(?,?,?,?)',(x.username,pw_hash(x.password),'admin',utcnow()))
-        uid=c.execute('SELECT id FROM users WHERE username=?',(x.username,)).fetchone()['id']; audit(c,uid,'bootstrap','user',uid,{'role':'admin'})
+        uid=c.execute('SELECT id FROM users WHERE username=?',(x.username,)).fetchone()['id']; c.execute('INSERT INTO super_administrators VALUES (?)',(uid,)); audit(c,uid,'bootstrap','user',uid,{'role':'admin'})
     return {'status':'created','username':x.username,'role':'admin','next':'Créer les comptes métier via POST /users.'}
 @app.post('/auth/login')
 def login(x: LoginIn, request: Request, response: Response):
@@ -151,7 +151,7 @@ def login(x: LoginIn, request: Request, response: Response):
     response.set_cookie('sisa_session', token, httponly=True, secure=SECURE_COOKIE, samesite='strict', max_age=SESSION_TTL, path='/')
     return {'access_token':token,'token_type':'bearer','expires_in':SESSION_TTL,'role':u['role']}
 @app.get('/auth/me')
-def me(u=Depends(user_from_token)): return {'id':u['id'],'username':u['username'],'role':u['role'],'data_profile':u.get('data_profile')}
+def me(u=Depends(user_from_token)): return {'id':u['id'],'username':u['username'],'role':u['role'],'data_profile':u.get('data_profile'),'super_admin':u.get('super_admin',False),'profile_label':u.get('profile_label')}
 @app.post('/auth/logout')
 def logout(request: Request, response: Response, u=Depends(user_from_token), authorization: Optional[str]=Header(default=None)):
     token = authorization[7:].strip() if authorization else request.cookies.get('sisa_session', '')
@@ -547,10 +547,13 @@ def ready():
 
 @app.get('/platform/config')
 def platform_config():
-    with db() as c: count = c.execute('SELECT COUNT(*) n FROM users').fetchone()['n']
-    return {'initialized':bool(count),'version':'0.7.1','deployment':'Render' if CLOUD else 'Local',
+    from .superadmin import appearance
+    with db() as c:
+        count = c.execute('SELECT COUNT(*) n FROM users').fetchone()['n']
+        branding = appearance(c)
+    return {'initialized':bool(count),'version':'0.8.0','deployment':'Render' if CLOUD else 'Local',
             'data_mode':'synthetic','bootstrap_key_required':bool(os.getenv('SISA_BOOTSTRAP_KEY')) or CLOUD,
-            'official_indicators':False,'external_ai':False,'public_publication':False}
+            'official_indicators':False,'external_ai':False,'public_publication':False,'appearance':branding['settings']}
 
 @app.get('/dashboard')
 def dashboard(u=Depends(user_from_token)):
@@ -625,7 +628,7 @@ def export_xlsx(u=Depends(require_roles('admin','supervisor'))):
     for row in rows: ws.append([safe_spreadsheet_cell(row[k]) for k in fields])
     ws.freeze_panes='A2'; ws.auto_filter.ref=ws.dimensions
     meta=wb.create_sheet('Méthode'); meta.append(['SISA','Export de dossiers — tous statuts'])
-    for pair in [('Auteur',u['username']),('Date UTC',utcnow()),('Version','0.7.1'),('Méthode','Provisoire, non officielle'),('Données','Synthétiques uniquement')]: meta.append(pair)
+    for pair in [('Auteur',u['username']),('Date UTC',utcnow()),('Version','0.8.0'),('Méthode','Provisoire, non officielle'),('Données','Synthétiques uniquement')]: meta.append(pair)
     buf=io.BytesIO(); wb.save(buf); buf.seek(0)
     return StreamingResponse(buf,media_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',headers={'Content-Disposition':'attachment; filename="sisa_dossiers.xlsx"'})
 
@@ -640,7 +643,7 @@ def report_pdf(start:date|None=None,end:date|None=None,jurisdiction:str|None=Non
     y=790
     lines=['SISA / PPEF','Rapport statistique provisoire - donnees synthetiques',
            f"Periode : {start or 'toutes dates'} au {end or 'toutes dates'}",
-           f"Auteur : {u['username']} | UTC : {utcnow()}",'Version : 0.7.1 | Methode : draft-v0.2-not-approved',
+           f"Auteur : {u['username']} | UTC : {utcnow()}",'Version : 0.8.0 | Methode : draft-v0.2-not-approved',
            f"Juridiction : {jurisdiction or 'Toutes'}",'Population : dossiers valides uniquement',f"Dossiers recus : {result['received_cases']}",
            f"Dossiers transnationaux : {result['transnational_cases']}",'Ventilation par categorie :']
     lines += [f"{r['category']} : {r['n']}" for r in result['by_category']]
@@ -657,7 +660,7 @@ def report_pdf(start:date|None=None,end:date|None=None,jurisdiction:str|None=Non
 def operations(u=Depends(require_roles('admin'))):
     return {'database':'PostgreSQL' if DATABASE_URL else 'SQLite','backup_mode':'Sauvegardes gerees Render + export pg_dump' if DATABASE_URL else 'Copie SQLite manuelle',
             'restore_validated':False,'real_data_authorized':False,'external_ai':False,
-            'version':'0.7.1','retention_policy':'A faire approuver','public_publication':False}
+            'version':'0.8.0','retention_policy':'A faire approuver','public_publication':False}
 
 @app.get('/examples/template.csv')
 def template_csv(u=Depends(user_from_token)):
@@ -691,3 +694,6 @@ install_access(app,db,audit,utcnow,require_roles)
 
 from .compliance import install as install_compliance
 install_compliance(app,db,audit,utcnow,user_from_token,require_roles,safe_spreadsheet_cell)
+
+from .superadmin import install as install_superadmin
+install_superadmin(app,db,audit,utcnow,user_from_token,pw_hash,DATABASE_URL)

@@ -38,6 +38,11 @@ def reset_test_database():
         c.executescript(ACCESS_SCHEMA)
         from app.compliance import SCHEMA as COMPLIANCE_SCHEMA
         c.executescript(COMPLIANCE_SCHEMA)
+        from app.superadmin import SCHEMA as SUPER_SCHEMA,seed
+        c.executescript(SUPER_SCHEMA)
+        for table in ('admin_profile_assignments','site_configuration_history','super_administrators','admin_profiles','site_configuration'):
+            c.execute('DELETE FROM '+table)
+        seed(c)
         c.execute('DELETE FROM business_reviews')
         c.execute('DELETE FROM analysis_snapshots')
         c.execute('DELETE FROM user_data_profiles')

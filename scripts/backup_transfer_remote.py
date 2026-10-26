@@ -18,7 +18,7 @@ with psycopg.connect(target,autocommit=True) as admin:
     admin.execute(sql.SQL('CREATE DATABASE {}').format(sql.Identifier(name)))
 dstinfo['dbname']=name
 schema=[]
-for path in ('app/main.py','app/legal.py','app/registry.py','app/transfer.py','app/access.py','app/compliance.py'):
+for path in ('app/main.py','app/legal.py','app/registry.py','app/transfer.py','app/access.py','app/compliance.py','app/superadmin.py'):
     if not Path(path).exists():continue
     tree=ast.parse(Path(path).read_text())
     node=next(n for n in tree.body if isinstance(n,ast.Assign) and any(isinstance(t,ast.Name) and t.id=='SCHEMA' for t in n.targets))
