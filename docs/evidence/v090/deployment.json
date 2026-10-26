@@ -1,0 +1,150 @@
+{
+  "version": "0.9.0",
+  "deployed_commit": "885753dca312c93e5878abd7cdb067ef5aa65dd0",
+  "render_deploy": "dep-dbflsno473hc73dlp750",
+  "ci_run": 40335636495,
+  "application_tests": 109,
+  "ci_jobs": "PostgreSQL 16/18, full restoration, desktop/mobile browser and 1500-case qualification successful",
+  "predeployment_backup": {
+    "source_read_only": true,
+    "target_database": "sisa_pre_transfer_20261026_135415",
+    "tables": {
+      "admin_profiles": 5,
+      "audit_log": 63,
+      "indicator_definitions": 1,
+      "jurisdictions": 0,
+      "login_attempts": 0,
+      "schema_migrations": 2,
+      "site_configuration": 1,
+      "users": 1,
+      "admin_profile_assignments": 0,
+      "analysis_snapshots": 0,
+      "business_reviews": 0,
+      "cases": 1500,
+      "import_batches": 1,
+      "import_previews": 0,
+      "reference_documents": 48,
+      "registry_batches": 1,
+      "registry_previews": 0,
+      "sessions": 6,
+      "site_configuration_history": 0,
+      "super_administrators": 1,
+      "user_data_profiles": 1,
+      "case_decisions": 0,
+      "case_events": 0,
+      "case_offences": 0,
+      "case_people": 0,
+      "case_profiles": 0,
+      "registry_records": 1500,
+      "registry_source_rows": 1500,
+      "transfer_archives": 0,
+      "case_measures": 0,
+      "decision_outcomes": 0
+    },
+    "verified": true,
+    "sequences_verified": true,
+    "committed_restore_verified": true,
+    "archive_sha256": "c6654cb29bb485dde75c0646ad23aabde71bc2d0581e1e3861dddac4ca45c1e2"
+  },
+  "qualification": {
+    "officially_approved": false,
+    "scope": "isolated synthetic technical qualification",
+    "checks": {
+      "intentional_anomalies_rejected": true,
+      "import_1500": true,
+      "repeated_import_blocked": true,
+      "independent_expected_statistics": true,
+      "profile_boundaries": true,
+      "encrypted_backup_restored_full_comparison": true
+    },
+    "profile_matrix": [
+      {
+        "profile": "technical",
+        "perimeter_cases": 1500,
+        "export_http": 200,
+        "followup_write_http": 200,
+        "passed": true
+      },
+      {
+        "profile": "direction",
+        "perimeter_cases": 1500,
+        "export_http": 200,
+        "followup_write_http": 403,
+        "passed": true
+      },
+      {
+        "profile": "statistician",
+        "perimeter_cases": 1500,
+        "export_http": 200,
+        "followup_write_http": 403,
+        "passed": true
+      },
+      {
+        "profile": "cabinet",
+        "perimeter_cases": 300,
+        "export_http": 200,
+        "followup_write_http": 200,
+        "passed": true
+      },
+      {
+        "profile": "clerk",
+        "perimeter_cases": 300,
+        "export_http": 403,
+        "followup_write_http": 200,
+        "passed": true
+      }
+    ],
+    "import_seconds": 1.617,
+    "dashboard_seconds": 0.211,
+    "restored_tables": 33,
+    "expected": {
+      "dossiers": 1500,
+      "personnes": 3000,
+      "personnes_physiques": 1500,
+      "personnes_morales": 1500,
+      "infractions": 3000,
+      "decisions": 600,
+      "mesures": 2400,
+      "decision_mixte": 150,
+      "enjeux_allegues_xof": "450000.00",
+      "saisies_xof": "15000.00",
+      "confiscations_xof": "1800.00",
+      "amendes_xof": "450.00",
+      "delai_median_jours": 40,
+      "anomalies_attendues": 0,
+      "parcours": {
+        "attente_orientation": 150,
+        "classement": 150,
+        "transmission": 150,
+        "non_lieu_total": 150,
+        "non_lieu_partiel": 150,
+        "saisine_jugement": 150,
+        "decision_mixte": 150,
+        "relaxe": 150,
+        "audience_renvoyee": 150,
+        "instruction_ouverte": 150
+      },
+      "officially_approved": false
+    }
+  },
+  "post_deploy": {
+    "users": 1,
+    "cases": 1500,
+    "registry_records": 1500,
+    "reference_documents": 48,
+    "procedural_followup": 0,
+    "operation_evidence": 1,
+    "public_tables": 33
+  },
+  "health_version": "0.9.0",
+  "live_ui_verified": true,
+  "restore_receipt_recorded_in_application": true,
+  "officially_approved": false,
+  "outstanding": {
+    "original_tdr_charter_unavailable": true,
+    "institutional_acceptance_pending": true,
+    "historical_orientation_dates_missing": 1500,
+    "production_backup_scheduler_active": false,
+    "second_encrypted_off_host_copy_to_configure": true
+  }
+}
