@@ -12,3 +12,5 @@
 .sidebar #nav{min-height:0;overflow-y:auto;flex:1 1 auto}
 .sidebar .workspace-label,.sidebar .brand,.sidebar-bottom{flex-shrink:0}
 .sidebar-bottom{padding-top:12px}.sidebar .profile{padding-top:12px}
+
+.sa-table table{min-width:760px}

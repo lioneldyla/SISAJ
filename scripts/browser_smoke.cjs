@@ -51,6 +51,7 @@ const root=path.resolve(__dirname,'..');
   const qa=process.env.SISA_SCREENSHOT_DIR;
   if(qa){fs.mkdirSync(qa,{recursive:true});await page.screenshot({path:path.join(qa,'superadmin-desktop.png'),fullPage:true});}
   await page.setViewportSize({width:390,height:844});
+  await page.waitForFunction(()=>document.querySelector('#sidebar').getBoundingClientRect().right<=1);
   assert(await page.evaluate(()=>document.documentElement.scrollWidth<=window.innerWidth),'Super administration mobile overflow');
   if(qa)await page.screenshot({path:path.join(qa,'superadmin-mobile.png'),fullPage:true});
   await page.setViewportSize({width:1440,height:1050});
