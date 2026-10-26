@@ -22,6 +22,8 @@ def analyze(c,u,start=None,end=None,as_of=None,date_basis='receipt',cabinet=None
     as_of=as_of or end or date.today()
     if start and start>as_of:raise HTTPException(422,'Observation antérieure au début de période')
     def period(x):return bool(x and (not start or str(x)>=str(start)) and (not end or str(x)<=str(end)) and str(x)<=str(as_of))
+    tracking=defaultdict(list)
+    for f in c.execute('SELECT f.* FROM procedural_followup f WHERE NOT EXISTS (SELECT 1 FROM procedural_followup newer WHERE newer.supersedes=f.id)').fetchall():tracking[f['case_id']].append(dict(f))
     items=[];groups=defaultdict(set);cats=defaultdict(set);monthly=defaultdict(lambda:Counter());results=defaultdict(set);financial=defaultdict(Decimal);financial_missing=Counter();money_ids=defaultdict(set);alerts=[];professions=Counter();activities=Counter();person_results=Counter();delays=[];options=defaultdict(set);cabinets=defaultdict(Counter);decision_count=0;cabinet_options=set();quality_codes=defaultdict(set);hearing_counts=Counter()
     for row in c.execute('SELECT * FROM cases ORDER BY id').fetchall():
         case=dict(row);r=read_record(c,case);p=r.procedure;cid=case['id'];received=date.fromisoformat(case['date_rp'])
@@ -57,6 +59,12 @@ def analyze(c,u,start=None,end=None,as_of=None,date_basis='receipt',cabinet=None
         if p.closure_date and p.closure_date<=as_of:events.append((str(p.closure_date),'Clôture de l’instruction'))
         if p.first_hearing_held and p.first_hearing_held<=as_of and not any(h.held_date==p.first_hearing_held for h in r.hearings):events.append((str(p.first_hearing_held),'Audience tenue'))
         future=[]
+        for f in tracking[cid]:
+            if f['status']=='cancelled':continue
+            if f['event_date']<=str(as_of):events.append((f['event_date'],'Suivi procédural renseigné'))
+            if f['due_date'] and f['status'] not in ('completed','cancelled'):
+                if f['due_date']>=str(as_of):future.append((f['due_date'],'Échéance de suivi renseignée'))
+                else:alerts.append({'id':cid,'rp':case['rp_number'],'type':'followup','reason':'Échéance renseignée passée : '+f['due_date']+' ; à examiner, sans conclusion légale','action':'Vérifier le suivi et la pièce source','responsible':p.cabinet or None})
         if p.first_hearing_planned and p.first_hearing_planned>=as_of:future.append((str(p.first_hearing_planned),'Audience prévue'))
         for h in r.hearings:
             when=h.held_date or h.planned_date
@@ -118,7 +126,7 @@ def analyze(c,u,start=None,end=None,as_of=None,date_basis='receipt',cabinet=None
     filtered=[x for x in items if not metric or x['id'] in groups[metric]]
     filtered.sort(key=lambda x:(x.get(sort) is None,str(x.get(sort) or '')),reverse=direction=='desc')
     params={'start':str(start) if start else None,'end':str(end) if end else None,'as_of':str(as_of),'date_basis':date_basis,'cabinet':cabinet,'provenance':provenance,'category':category,'subtype':subtype,'party':party,'transnational':transnational,'status':status,'jurisdiction':jurisdiction,'waiting_days':waiting_days,'q':q,'metric':metric,'sort':sort,'direction':direction}
-    output={'generated_at':datetime.now(timezone.utc).isoformat(),'filters':params,'population':('Tous les statuts' if status=='all' else {'draft':'Brouillons','submitted':'Soumis','returned':'Retournés','validated':'Validés'}[status]),'officially_approved':False,'cards':cards,'persons':{'physical':sum(x['pp'] or 0 for x in items) if pp_known else None,'legal':sum(x['pm'] or 0 for x in items) if pm_known else None,'professions':dict(professions),'activities':dict(activities),'individual_outcomes':dict(person_results)},'monthly':[{'month':k,**v} for k,v in sorted(monthly.items())],'categories':[{'label':k,'count':len(v)} for k,v in sorted(cats.items(),key=lambda x:-len(x[1]))],'results':[{'key':k,'count':len(v),'unit':'décisions'} for k,v in results.items()],'financial':[{'kind':k,'currency':cur,'basis':b,'amount':str(v)} for (k,cur,b),v in sorted(financial.items())],'financial_missing':dict(financial_missing),'alerts':alerts[:200],'alerts_total':len(alerts),'rows':filtered[offset:offset+limit],'total':len(filtered),'cohort_size':len(items),'options':{k:sorted(v) for k,v in options.items()},'limits':['Les habilitations par profil, cabinet et juridiction sont appliquées côté serveur ; les comptes historiques sans profil conservent leur périmètre existant.','Audiences successives disponibles si saisies ; calendrier non exhaustif et exécution des confiscations non établie.','Jeu enrichi : tous les dossiers suivent une instruction et une décision au fond ; autres parcours absents.','Les montants de bases de valorisation différentes sont détaillés séparément ; leur comparaison économique nécessite un périmètre validé.'],'delay_distribution':dict(Counter('0–30 jours' if x<=30 else '31–90 jours' if x<=90 else '91–180 jours' if x<=180 else 'Plus de 180 jours' for x in delays))}
+    output={'generated_at':datetime.now(timezone.utc).isoformat(),'filters':params,'population':('Tous les statuts' if status=='all' else {'draft':'Brouillons','submitted':'Soumis','returned':'Retournés','validated':'Validés'}[status]),'officially_approved':False,'cards':cards,'persons':{'physical':sum(x['pp'] or 0 for x in items) if pp_known else None,'legal':sum(x['pm'] or 0 for x in items) if pm_known else None,'professions':dict(professions),'activities':dict(activities),'individual_outcomes':dict(person_results)},'monthly':[{'month':k,**v} for k,v in sorted(monthly.items())],'categories':[{'label':k,'count':len(v)} for k,v in sorted(cats.items(),key=lambda x:-len(x[1]))],'results':[{'key':k,'count':len(v),'unit':'décisions'} for k,v in results.items()],'financial':[{'kind':k,'currency':cur,'basis':b,'amount':str(v)} for (k,cur,b),v in sorted(financial.items())],'financial_missing':dict(financial_missing),'alerts':alerts[:200],'alerts_total':len(alerts),'rows':filtered[offset:offset+limit],'total':len(filtered),'cohort_size':len(items),'options':{k:sorted(v) for k,v in options.items()},'limits':['Les habilitations par profil, cabinet et juridiction sont appliquées côté serveur ; les comptes historiques sans profil conservent leur périmètre existant.','Audiences successives disponibles si saisies ; calendrier non exhaustif. Le suivi d’exécution est renseigné séparément et ne certifie pas l’exécution intégrale.','La couverture des parcours dépend des données du périmètre ; une absence de décision ne prouve pas la clôture du dossier.','Les montants de bases de valorisation différentes sont détaillés séparément ; leur comparaison économique nécessite un périmètre validé.'],'delay_distribution':dict(Counter('0–30 jours' if x<=30 else '31–90 jours' if x<=90 else '91–180 jours' if x<=180 else 'Plus de 180 jours' for x in delays))}
 
 
     output['by_cabinet']=[{'label':k,**v} for k,v in sorted(cabinets.items())]
@@ -126,6 +134,7 @@ def analyze(c,u,start=None,end=None,as_of=None,date_basis='receipt',cabinet=None
     output['indicator_catalogue']=INDICATORS
     output['by_status']=[{'label':k,'count':v} for k,v in Counter(x['status'] for x in items).items()]
     output['dataset_kind']='synthetic'
+    output['procedural_coverage']=dict(Counter(x['orientation'] for x in items))
     output['quality_summary']=[{'code':k,'dossiers':len(v)} for k,v in sorted(quality_codes.items())]
     output['hearing_summary']={'recorded_only':True,'by_status':dict(hearing_counts),'definition':'Audiences détaillées enregistrées, comptées à leur date tenue ou, à défaut, prévue. Première audience historique non ajoutée pour éviter les doublons.'}
     return output

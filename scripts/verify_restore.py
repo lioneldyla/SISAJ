@@ -35,6 +35,8 @@ with tempfile.TemporaryDirectory(prefix='sisaj-restore-') as tmp:
         assert c.post(f'/cases/{cid}/submit?expected_version=3',headers=h).status_code==200
         assert c.post(f'/cases/{cid}/validate?expected_version=4',headers=h).status_code==200
         before=c.get('/stats/legal',headers=h).json()
+        assert c.post(f'/cases/{cid}/followup',headers=h,json={'kind':'deadline','event_date':'2026-03-01','due_date':'2026-03-10','source_reference':'RESTORE-TEST','description':'Suivi fictif conservé après restauration','reason':'Exercice de restauration du suivi','expected_version':5}).status_code==200
+        assert c.post('/qualification/evidence',headers=h,json={'kind':'incident_exercise','result':'pending','evidence':'Exercice fictif de reprise et de conservation des preuves'}).status_code==200
         assert c.post('/compliance/reviews',headers=h,json={'scenario':'restore','result':'pending','expected':'Comparaison intégrale après restauration','observed':'Exercice synthétique en cours de vérification','evidence':'Restauration isolée exécutée par le script de test'}).status_code==200
         settings=c.get('/superadmin',headers=h).json()['settings']
         settings['site_name']='SISAJ restauration test'
@@ -64,6 +66,8 @@ from app.main import app
 with TestClient(app) as c:
  h=json.loads(os.environ['SISA_RESTORE_TEST_HEADER'])
  assert c.get('/auth/me',headers=h).json()['super_admin'] is True
+ assert len(c.get('/cases/1/followup',headers=h).json()['items'])==1
+ assert len(c.get('/qualification',headers=h).json()['history'])==1
  assert c.get('/superadmin',headers=h).json()['settings']['site_name']=='SISAJ restauration test'
  assert len(c.get('/superadmin/configuration/history',headers=h).json()['items'])>=2
  assert c.get('/stats/legal',headers=h).json()==json.loads(os.environ['SISA_RESTORE_TEST_STATS'])
