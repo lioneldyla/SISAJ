@@ -204,7 +204,9 @@ const root=path.resolve(__dirname,'..');
   await page.locator('#dashboard-content .metric-value').first().waitFor();
   assert.equal(await page.locator('#dashboard-content .metric-value').first().innerText(),'2');
 
-  assert(await page.locator('.data-context').innerText().then(t=>t.includes('fictives')));
+  assert.equal(await page.locator('#main .data-context').count(),0);
+  assert(await page.locator('.footer .data-context').innerText().then(t=>t.includes('fictives')));
+  assert.equal(await page.locator('.footer .data-context').evaluate(el=>getComputedStyle(el).backgroundColor),'rgba(0, 0, 0, 0)');
   await page.locator('#dashboard-more-filters').click();
   assert(await page.locator('#dashboard-filters [name="provenance"]').isVisible());
   await page.locator('#dashboard-more-filters').click();
