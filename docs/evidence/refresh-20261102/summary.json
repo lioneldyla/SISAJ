@@ -1,0 +1,42 @@
+{
+  "date": "2026-11-02",
+  "source_commit": "c584f1e947dbee968a83562bf4e24ee21865875e",
+  "application_version": "0.9.0",
+  "tests": {
+    "sqlite": {
+      "passed": 109,
+      "failed": 0,
+      "warnings": 1
+    },
+    "aggregate_contract": {
+      "passed": 4,
+      "failed": 0
+    }
+  },
+  "restore": {
+    "scope": "isolated synthetic SQLite",
+    "tables_compared": 33,
+    "application_restarted": true,
+    "integrity": "ok",
+    "foreign_keys": "ok",
+    "archive_sha256": "37555c754b2ecf497bfca9dc8f6bba3b1a8f35f059770d97c43a2d92a1cbc084"
+  },
+  "remote_checks": {
+    "render_api_status": 401,
+    "site_access": "proxy CONNECT 403",
+    "live_imports_verified": false,
+    "deployment_performed": false,
+    "live_import_performed": false
+  },
+  "initial_tdr_attachment": {
+    "accessible": true,
+    "sha256": "58149e6a7192afd9b98d9e7e8f340a66e43ef25fe69e867c5a97bbd255e19f4a",
+    "published_or_imported": false
+  },
+  "browser": {
+    "passed": true,
+    "javascript_errors": 0,
+    "scope": "isolated synthetic desktop/mobile",
+    "screenshots_directory": "workspace artifacts/sisa-refresh-20261102"
+  }
+}

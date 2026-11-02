@@ -43,3 +43,11 @@
 - Validation des entiers et montants, conflits 409, neutralisation des formules et verrou sur événements de dossier validé.
 - Tests API sur SQLite/PostgreSQL, parcours navigateur, redémarrage et restauration synthétiques.
 - Aucun déploiement Render ni usage de données réelles ; TDR complet et recette institutionnelle non acquis.
+
+## 2 novembre 2026 — actualisation de l’état v0.9.0
+
+- Synchronisation du checkout avec `main` (`c584f1e`), sans écrasement de modifications locales.
+- Correction de `VERSION`, resté à v0.5.1, pour correspondre à la version applicative 0.9.0 déjà publiée.
+- README, guide Render, feuille de route et prochaine étape remis à jour ; preuves historiques séparées des contrôles du jour.
+- Revalidation locale : API, restauration synthétique et qualification isolée de 1 500 dossiers. Résultats détaillés dans le bilan daté.
+- Aucun import sur le site, aucune donnée réelle et aucun nouveau déploiement Render.

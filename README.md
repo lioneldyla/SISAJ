@@ -1,10 +1,18 @@
-# SISAJ v0.5 — registre PPEF complet et pilotage
+# SISAJ v0.9.0 — registre, pilotage et suivi procédural
 
 Système de gestion et d’analyse PPEF : interface française responsive, API FastAPI et stockage PostgreSQL sur Render. Évolution du socle v0.2 hybride fourni, conservant les parcours métier existants et le mode local SQLite.
 
 **Version de démonstration, données synthétiques uniquement. Aucun hébergement de données judiciaires réelles n’est autorisé par cette livraison.** Les indicateurs restent provisoires. Les modules officiels complets, la recette institutionnelle et la revue indépendante restent à réaliser.
 
-## Évolution v0.5 du 25 octobre 2026
+## État actualisé au 2 novembre 2026
+
+Le checkout est synchronisé avec `main` à partir de `c584f1e`. La version applicative est **0.9.0** ; `VERSION` a été corrigé de `0.5.1-demo` à `0.9.0-demo`. Les évolutions comprennent le registre PPEF, le pilotage, les profils et périmètres, la conformité/recette, le suivi procédural et les preuves d’exploitation.
+
+Dernier déploiement signalé et confirmé par le propriétaire : **v0.9.0**, commit `c584f1e`, sur https://sisa-platform-demo.onrender.com/ . La disponibilité et les imports du site n’ont pas pu être revérifiés aujourd’hui : API Render 401, accès au domaine bloqué par le proxy. Aucun nouvel import sur le site n’a été effectué.
+
+Les vérifications locales du 2 novembre sont consignées dans [le bilan d’actualisation](docs/actualisation_2026-11-02.md). Les paragraphes v0.3–v0.5 ci-dessous sont historiques ; ils ne constituent pas un état distant actuel. Voir aussi [la feuille de route courante](docs/roadmap.md) et [la qualification v0.9.0](docs/validation_v090.md).
+
+## Historique — évolution v0.5 du 25 octobre 2026
 
 Reprise des 31 variables et des colonnes complémentaires du classeur PPEF : saisie en six sections, procédures/audiences, personnes détaillées, décisions/peines et biens/valeurs. Import multi-feuilles contrôlé, couverture de colonnes, original complet et lignes sources conservés, blocage des ambiguïtés et des pertes silencieuses. Six états de pilotage, rapports PDF/Excel, réversibilité et prévisions de flux uniquement lorsque l’historique le permet.
 

@@ -1,6 +1,6 @@
 # Mise en ligne de la démonstration SISAJ sur Render
 
-Mise à jour v0.4 : voir [le bilan](../docs/validation_v04.md). Le 25 octobre 2026, après création des ressources dans le compte et relance du premier démarrage PostgreSQL, la v0.4 a été intégrée à main et déployée : https://sisa-platform-demo.onrender.com/ . Disponibilité et HTTPS confirmés ; premier administrateur à initialiser et restauration de la base hébergée à vérifier.
+État documentaire au 2 novembre 2026 : le déploiement v0.9.0 du commit `c584f1e` a été confirmé par le propriétaire dans la conversation. La disponibilité actuelle n’est pas revérifiée : l’API Render répond 401 et le proxy refuse le domaine. Ne pas créer de ressources en double. Voir [le bilan d’actualisation](../docs/actualisation_2026-11-02.md). Aucun nouvel import ni nouveau déploiement effectué lors de cette actualisation.
 
 ## Périmètre de cette livraison
 
@@ -8,7 +8,7 @@ Le blueprint racine déploie la plateforme complète de démonstration : interfa
 
 ## Préparer le dépôt
 
-1. Mettre les sources livrées dans un dépôt GitHub privé contrôlé par le projet. Le dépôt actuel contient la v0.4 sur main après intégration de la PR n° 1.
+1. Mettre les sources livrées dans un dépôt GitHub privé contrôlé par le projet. Le dépôt contient la v0.9.0 sur `main` ; cette actualisation aligne les métadonnées et la documentation, sans migration de la base en ligne.
 2. Vérifier que `.env`, classeurs, données réelles, dumps, sauvegardes et secrets sont exclus. L’archive de livraison contient du code et de la documentation, pas de base de données.
 3. Choisir la branche à déployer, généralement `main` après création du premier commit. Ne pas supposer que la branche distante existe déjà.
 

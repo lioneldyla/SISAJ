@@ -1,0 +1,1 @@
+Browser workflow passed: bootstrap, login, creation, structured legal editor, submission, validation, users, import confirmation, statistics, PDF/XLSX downloads, responsive navigation, logout; 0 JavaScript errors.
