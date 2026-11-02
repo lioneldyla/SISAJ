@@ -15,3 +15,13 @@ html{scroll-behavior:smooth}main:focus{outline:none}input,select,textarea{min-he
 @media(prefers-reduced-motion:reduce){html{scroll-behavior:auto}*,*::before,*::after{transition:none!important;animation:none!important}}
 
 .qualification-table table{min-width:920px}.followup-table table{min-width:960px}#followup-filters{margin-bottom:22px}#followup-entry .scenario-form{margin:20px 0}#operations-evidence{max-width:760px}#sa-pane-operations .notice{margin-top:20px}
+
+/* Neutral information surfaces; confirmed errors retain their red treatment. */
+.notice:not(.error),.review-panel,.test-banner,.global-test-banner{background:#f3f6f8;border-color:#d9e2e8;color:#334a5a}
+.test-banner,.global-test-banner{position:static;font-weight:400}
+.footer .data-context{display:inline;margin:0;padding:0;border:0;border-radius:0;background:transparent;color:#536975;font-size:12px;line-height:1.6}
+.footer .data-context::before{content:none}
+.dash-alert{background:#f4f7fa;border-left-color:#54728a}
+.dash-alert.quality{border-left-color:#b94747}
+.notice,.review-panel{overflow-wrap:anywhere}
+@media(max-width:650px){.footer{display:flex;flex-direction:column;align-items:flex-start;gap:6px}.footer .data-context{font-size:12px}}
