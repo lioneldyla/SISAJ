@@ -1,0 +1,28 @@
+# Separate demonstration service. Does not alter or remove existing paid resources.
+# Apply only after restoring and verifying the dedicated external PostgreSQL database.
+services:
+  - type: web
+    name: sisaj-free
+    runtime: docker
+    plan: free
+    region: frankfurt
+    branch: main
+    dockerfilePath: ./Dockerfile
+    dockerContext: .
+    healthCheckPath: /ready
+    autoDeployTrigger: "off"
+    envVars:
+      - key: DATABASE_URL
+        sync: false
+      - key: SISA_DEPLOYMENT
+        value: render
+      - key: SISA_DATA_MODE
+        value: synthetic
+      - key: SISA_SECURE_COOKIE
+        value: "1"
+      - key: SISA_BOOTSTRAP_KEY
+        generateValue: true
+      - key: SISA_DB_PATH
+        value: /tmp/sisa/data/unused.db
+      - key: SISA_BACKUP_DIR
+        value: /tmp/sisa/backups
