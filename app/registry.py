@@ -209,12 +209,14 @@ def install(app,db,locked_case,audit,utcnow,user_from_token,require_roles,safe_c
     jurisdiction=item['record'].get('jurisdiction_code')
     if jurisdiction and not c.execute('SELECT code FROM jurisdictions WHERE code=?',(jurisdiction,)).fetchone():raise HTTPException(422,'Juridiction inconnue dans le lot ; compléter le référentiel avant reprise')
    bid=str(uuid.uuid4());now=utcnow()
+   source_by_row=defaultdict(list)
+   for source in r['source_rows']:source_by_row[source['row']].append(source)
    c.execute('INSERT INTO registry_batches VALUES (?,?,?,?,?,?,?)',(bid,u['id'],now,payload['filename'],r['file_sha256'],payload['original_base64'],json.dumps({k:r[k] for k in ('sheets','coverage','warnings')},ensure_ascii=False)))
    for item in r['items']:
     d=item['core'];cur=c.execute('INSERT INTO cases(rp_number,rp_year,date_rp,provenance,category,ri_number,transnational,person_physical_count,person_legal_count,source_batch,created_by,updated_by,created_at,updated_at) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?)',(d['rp_number'],d['rp_year'],d['date_rp'],d['provenance'],d['category'],d['ri_number'],int(d['transnational']),d['person_physical_count'],d['person_legal_count'],bid,u['id'],u['id'],now,now));cid=cur.lastrowid
     record=Register.model_validate(item['record']);write_record(c,cid,record,now,u['id'])
-    for source in r['source_rows']:
-     if source['row'] in item['source_rows']:c.execute('INSERT INTO registry_source_rows VALUES (?,?,?,?,?,?)',(str(uuid.uuid4()),bid,cid,source['sheet'],source['row'],json.dumps(source['cells'],ensure_ascii=False)))
+    for row_number in item['source_rows']:
+     for source in source_by_row[row_number]:c.execute('INSERT INTO registry_source_rows VALUES (?,?,?,?,?,?)',(str(uuid.uuid4()),bid,cid,source['sheet'],source['row'],json.dumps(source['cells'],ensure_ascii=False)))
    c.execute('INSERT INTO import_batches VALUES (?,?,?,?,?,?,?)',(bid,payload['filename'],r['total_rows'],len(r['items']),u['id'],now,r['source_sheet']))
    audit(c,u['id'],'import','registry_batch',bid,{'rows':r['total_rows'],'dossiers':len(r['items']),'sha256':r['file_sha256']})
    c.execute('DELETE FROM registry_previews WHERE id=?',(preview_id,))

@@ -14,6 +14,7 @@ from fastapi import FastAPI, Depends, File, Header, HTTPException, UploadFile, R
 from fastapi.responses import HTMLResponse, StreamingResponse, FileResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field, ConfigDict
+from .case_models import CaseIn
 from openpyxl import load_workbook
 
 ROOT = Path(__file__).resolve().parent.parent
@@ -109,9 +110,6 @@ def require_roles(*roles):
 
 class BootstrapIn(BaseModel): username: str=Field(min_length=3,max_length=80); password: str=Field(min_length=14,max_length=200)
 class LoginIn(BaseModel): username: str=Field(min_length=1,max_length=80); password: str=Field(min_length=1,max_length=200)
-class CaseIn(BaseModel):
-    model_config = ConfigDict(str_strip_whitespace=True, extra='forbid')
-    rp_number: str=Field(min_length=1,max_length=100); rp_year: int=Field(ge=1900,le=2200); date_rp: date; provenance: str=Field(min_length=1,max_length=250); transnational: bool | None; category: str=Field(min_length=1,max_length=250); ri_number: Optional[str]=None; person_physical_count: Optional[int]=Field(default=None,ge=0,le=2147483647); person_legal_count: Optional[int]=Field(default=None,ge=0,le=2147483647)
 class ReturnIn(BaseModel):
     model_config = ConfigDict(str_strip_whitespace=True)
     reason: str=Field(min_length=5,max_length=1000)

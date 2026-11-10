@@ -4,6 +4,7 @@ from datetime import date,datetime
 from decimal import Decimal,InvalidOperation
 from openpyxl import load_workbook
 from .registry_models import Register,Money,validate_dates,quality,CATALOGUES
+from .case_models import CaseIn
 
 
 def norm(s):return re.sub(r'[^a-z0-9]+','',unicodedata.normalize('NFKD',str(s or '')).encode('ascii','ignore').decode().lower())
@@ -114,6 +115,7 @@ def convert(raw,line):
    record['measures'].append(m)
  if norm(raw.get('trafficking')) in ('oui','non'):record['trafficking_state']='yes' if norm(raw['trafficking'])=='oui' else 'no'
  result=validate_dates(Register.model_validate(record),date.fromisoformat(received))
+ core=CaseIn.model_validate(core).model_dump(mode='json')
  return {'core':core,'record':result.model_dump(mode='json'),'source_rows':[line]}
 
 
@@ -121,9 +123,14 @@ def preview(filename,content,sheet=None,date_role=None):
  if filename.lower().endswith('.jsonl'):return preview_package(content)
  coverage=[];warnings=[];errors=[];sheets=[];source_rows=[]
  if filename.lower().endswith('.csv'):
-  reader=csv.reader(io.StringIO(content.decode('utf-8-sig')));rows=list(reader)
-  if any(len(row)>256 for row in rows):raise ValueError('Maximum 256 colonnes')
-  if len(rows)>10001:raise ValueError('Maximum 10 000 lignes')
+  rows=[]
+  try:
+   for row in csv.reader(io.StringIO(content.decode('utf-8-sig')),strict=True):
+    if len(row)>256:raise ValueError('Maximum 256 colonnes')
+    if len(rows)>=10001:raise ValueError('Maximum 10 000 lignes')
+    rows.append(row)
+  except csv.Error as e:
+   raise ValueError('CSV illisible : vérifier les guillemets et la taille des champs.') from e
   worksheets=[('CSV',rows)]
  elif filename.lower().endswith('.xlsx'):
   with zipfile.ZipFile(io.BytesIO(content)) as z:
@@ -236,7 +243,6 @@ def preview(filename,content,sheet=None,date_role=None):
 
 def preview_package(content):
  """Typed synthetic package: preserve relationships, ignore requested workflow status."""
- from .main import CaseIn
  lines=[line for line in content.decode('utf-8-sig').splitlines() if line.strip()]
  if len(lines)>10000:raise ValueError('Maximum 10 000 dossiers')
  items=[];sources=[];errors=[];seen=set();coverage={}
