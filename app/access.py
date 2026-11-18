@@ -42,6 +42,8 @@ def install(app,db,audit,utcnow,require_roles):
             r=c.execute('SELECT role FROM users WHERE id=?',(uid,)).fetchone()
             if not r:raise HTTPException(404,'Compte introuvable')
             if x.profile not in roles or roles[x.profile]!=r['role']:raise HTTPException(422,'Profil incompatible avec le rôle de sécurité')
+            if x.profile=='technical' and (x.cabinets or x.jurisdictions):raise HTTPException(422,'Le profil technique dispose d’un périmètre global ; restrictions inopérantes interdites.')
+            if any(not v.strip() or len(v)>100 for v in x.cabinets+x.jurisdictions):raise HTTPException(422,'Périmètre invalide.')
             if x.profile in ('cabinet','clerk') and not (x.cabinets or x.jurisdictions):raise HTTPException(422,'Périmètre obligatoire')
             c.execute('DELETE FROM user_data_profiles WHERE user_id=?',(uid,));c.execute('INSERT INTO user_data_profiles VALUES (?,?,?,?)',(uid,x.profile,json.dumps(x.cabinets),json.dumps(x.jurisdictions)))
             c.execute('DELETE FROM admin_profile_assignments WHERE user_id=?',(uid,))

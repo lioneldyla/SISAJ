@@ -205,8 +205,16 @@ def list_cases(q: str|None=None, year: int|None=None, start: date|None=None, end
         from .access import permitted
         all_rows=c.execute(sql.replace(' LIMIT ? OFFSET ?',''),args[:-2]).fetchall()
         allowed=[r for r in all_rows if permitted(c,dict(r),u)]
-        total=len(allowed);rows=allowed[offset:offset+limit]
-    return {'total':total,'limit':limit,'offset':offset,'items':[dict(r) for r in rows]}
+        total=len(allowed);rows=[dict(r) for r in allowed[offset:offset+limit]]
+        # Project the typed state consistently with the individual case view.
+        states={}
+        if rows:
+            marks=','.join('?' for _ in rows)
+            states={r['case_id']:json.loads(r['payload'])['transnational_state'] for r in c.execute('SELECT case_id,payload FROM registry_records WHERE case_id IN ('+marks+')',tuple(r['id'] for r in rows)).fetchall()}
+        for row in rows:
+            state=states.get(row['id'])
+            row['transnational']=bool(row['transnational']) if state is None else True if state=='yes' else False if state=='no' else None
+    return {'total':total,'limit':limit,'offset':offset,'items':rows}
 @app.get('/cases/{case_id}')
 def get_case(case_id:int,u=Depends(user_from_token)):
     with db() as c:
@@ -223,13 +231,16 @@ def update_case(case_id:int,x:CaseIn,reason:str,expected_version:int|None=None,u
     if len(reason.strip())<5: raise HTTPException(422,'Motif de correction obligatoire (5 caractères minimum).')
     vals=normalize_case(x); now=utcnow()
     with db(write=True) as c:
+        if DATABASE_URL:c.execute('SELECT pg_advisory_xact_lock(731026)')
         old=locked_case(c,case_id,expected_version)
+        if c.execute('SELECT id FROM cases WHERE LOWER(rp_number)=? AND rp_year=? AND id<>?',(x.rp_number.lower(),x.rp_year,case_id)).fetchone():
+            raise HTTPException(409,'Dossier déjà présent pour ce RP et cette année.')
         if not old: raise HTTPException(404,'Dossier introuvable.')
         if expected_version is not None and old['version'] != expected_version: raise HTTPException(409,'Le dossier a été modifié. Rechargez sa version actuelle.')
         from .registry_models import Register,validate_dates
         extra=c.execute('SELECT payload FROM registry_records WHERE case_id=?',(case_id,)).fetchone()
         if extra:
-            vals=list(vals);vals[6]=int(Register.model_validate_json(extra['payload']).transnational_state=='yes')
+            vals=list(vals);vals[5]=int(Register.model_validate_json(extra['payload']).transnational_state=='yes')
             try: validate_dates(Register.model_validate_json(extra['payload']),x.date_rp)
             except ValueError as e: raise HTTPException(422,str(e))
         if old['status']=='validated' and u['role']!='supervisor' and u['role']!='admin': raise HTTPException(403,'Seul le superviseur peut corriger un dossier validé.')
@@ -330,8 +341,21 @@ def parse_date(v):
     return None
 def read_rows(filename, content):
     if Path(filename).suffix.lower()=='.csv':
-        try: return list(csv.DictReader(io.StringIO(content.decode('utf-8-sig')))), None
-        except Exception as e: raise HTTPException(400,'CSV illisible; UTF-8 attendu.') from e
+        try:
+            reader=csv.reader(io.StringIO(content.decode('utf-8-sig')),strict=True)
+            headers=next(reader,[])
+            if len(headers)>256:raise HTTPException(413,'Maximum 256 colonnes.')
+            headers=[h.strip() for h in headers]
+            if any(not h for h in headers) or len({h.casefold() for h in headers})!=len(headers):
+                raise HTTPException(422,'En-têtes vides ou dupliqués ; aucune colonne ne sera ignorée.')
+            rows=[]
+            for values in reader:
+                if not any(v.strip() for v in values):continue
+                if len(rows)>=10000:raise HTTPException(413,'Maximum 10 000 lignes par import.')
+                if len(values)>len(headers):raise HTTPException(422,'Ligne plus large que les en-têtes ; aucune cellule ne sera ignorée.')
+                rows.append(dict(zip(headers,values)))
+            return rows,None
+        except (csv.Error,UnicodeError) as e:raise HTTPException(400,'CSV illisible ; UTF-8 et guillemets valides attendus.') from e
     if Path(filename).suffix.lower()!='.xlsx': raise HTTPException(415,'Formats acceptés : CSV et XLSX.')
     try:
         with zipfile.ZipFile(io.BytesIO(content)) as archive:
@@ -343,18 +367,27 @@ def read_rows(filename, content):
     except Exception as e: raise HTTPException(400,'XLSX illisible.') from e
     # canonical template: first row headers; original PPEF: row 3 headers on AUDIENCES PENALES
     if 'AUDIENCES PENALES' in wb.sheetnames:
-        ws=wb['AUDIENCES PENALES']; header_row=3; source='AUDIENCES PENALES'
+        ws=wb['AUDIENCES PENALES']; source='AUDIENCES PENALES'
+        first=next(ws.iter_rows(min_row=1,max_row=1,values_only=True),())
+        header_row=1 if any(str(v).strip()=='rp_number' for v in first) else 3
     else: ws=wb.active; header_row=1; source=ws.title
     if (ws.max_column or 0)>256 or (ws.max_row or 0)>10003:
         wb.close()
         raise HTTPException(413,'XLSX limité à 256 colonnes et 10 000 lignes de données.')
-    headers=[str(v).strip() if v is not None else '' for v in next(ws.iter_rows(min_row=header_row,max_row=header_row,values_only=True))]
+    headers=[str(v).strip() if v is not None else '' for v in next(ws.iter_rows(min_row=header_row,max_row=header_row,values_only=True),())]
+    named=[h.casefold() for h in headers if h]
+    if not named or len(set(named))!=len(named):
+        wb.close()
+        raise HTTPException(422,'En-têtes absents ou dupliqués.')
     rows=[]
     for vals in ws.iter_rows(min_row=header_row+1,values_only=True):
         if not any(v is not None and str(v).strip() for v in vals): continue
         if len(rows) >= 10000:
             wb.close()
             raise HTTPException(413,'Maximum 10 000 lignes par import.')
+        if any(v is not None and str(v).strip() for i,v in enumerate(vals) if i>=len(headers) or not headers[i]):
+            wb.close()
+            raise HTTPException(422,'Cellule renseignée sans en-tête ; aucune donnée ne sera ignorée.')
         rows.append({headers[i]: vals[i] if i<len(vals) and headers[i] else None for i in range(len(headers)) if headers[i]})
     wb.close(); return rows, source
 def parse_integer(value):
